@@ -1,0 +1,222 @@
+<!doctype html>
+<html>
+<head>
+  <title>Data structure vizualizer</title>
+  <style type="text/css">
+  </style> 
+</head>
+<body>
+
+  <canvas id="canvas" width="300" height="100"></canvas>
+
+  <script>
+    var el = document.getElementById.bind(document)
+    var ctx = el('canvas').getContext('2d')
+    
+    function shift(dx, context) {
+      context = context || ctx
+      dx = dx || -1
+      
+      var w = context.canvas.width
+      var h = context.canvas.height
+      var imageData = context.getImageData(0, 0, w, h);
+      
+      // ctx.clearRect(0, 0, w, h);
+      context.putImageData(imageData, dx, 0);
+      
+      return false
+    }
+    
+    function shifter(data, context) {
+      shift(-1 * (data||[]).length)
+      return data
+    }
+    
+    function draw(data, offset, context) {
+      context = context || ctx
+      data = data || ds
+      
+      var w = context.canvas.width
+      var h = context.canvas.height
+      
+      var list = flatten(data)
+      list.forEach(function(item, index) {        
+        var c = "hsl(" + item + ", 60%, 60%)"
+        context.fillStyle = c
+        context.fillRect(w-1-offset, index, 1, 1);
+      })
+      
+      return false // THINK: ???
+    }
+    
+    function drawer(data, context) {
+      var len = data.length
+      data.forEach(function(arr, ind) {draw(arr, len-ind)})
+      return data
+    }
+    
+    function draw_color(context, color) {
+      context = context || ctx
+      color = color || Math.floor( Math.random() * 360 )
+      
+      var w = context.canvas.width
+      var h = context.canvas.height
+      var c = "hsl(" + color + ", 60%, 60%)"
+      
+      ctx.fillStyle = c
+      ctx.fillRect(w-1, 0, 1, h);
+    }
+    
+    // function go(fun) {
+    //   going = true;
+    //   fun = fun || both
+    //   ~(function really_go() {fun(); if(going) {window.requestAnimationFrame(really_go)}})()
+    // }
+
+    function stop() {going = false}
+    
+    ///// a data structure thing ok
+    
+    ds = []
+    
+    var ran = function() {return Math.floor(Math.random() * 256)}
+
+    var step = function() {
+      ds.push(ran()); ds.shift(); return ds}
+    
+    var init = function() {for(i=0; i<100; i++) { ds.push(ran()) }}
+    
+    function both() {step(); draw(); shift();}
+    
+    init()
+    
+    ////// 
+        
+    function flatten(data) {
+      return data
+    }
+    
+    // Object.observe(ds, function(changes){
+    //   changes.forEach(function(change) {
+    //     console.log(change.type, change.name, change.oldValue);
+    //   });
+    // });
+    
+    // Array.observe(ds, function(changeRecords) {
+    //   console.log('Array observe', changeRecords);
+    // });
+    
+    /*
+    
+    ok. hi! today you're going to do this stuff:
+    - observe the array and change the pixels based on it [copy + shift?]
+    - flatten deeper trees (multiple ways)
+    - color by value, diff, change, locality, etc
+    - open omnigraffle to start fiddling with structure diagrams
+    - build a simple animation thingy
+    - slides & more slides on paper or something
+    - notebook + paper + computer consolidation [where?]
+    
+    
+    step -> (draw + shift)
+    - draw takes an array of color data (either just h or hsl)
+    
+    render -> doctor_data -> step
+    
+    
+    
+    
+    
+    
+    */
+    
+    
+    build_renderer = function(pipeline) {
+      var queued_render = false
+      var queued_data = []
+      
+      function renderer() {
+        queued_render = false
+        
+        pipeline.reduce(function(data, fun) {
+          return fun(data)
+        }, queued_data)
+        
+        queued_data = []
+      }
+      
+      return function(data) {
+        queued_data.push(data.slice()) // OPT: don't need slice if it's persistent
+        if(queued_render) return false
+
+        queued_render = true
+        window.requestAnimationFrame(renderer)
+        // setTimeout(renderer, 100)
+      }
+    }
+    
+
+    
+    var go = function(fun) {
+      fun = fun || renderer
+      going = true; 
+      ~(function really_go() {renderer(step()); if(going) {setTimeout(really_go, 30)}})()
+      // ~(function really_go() {renderer(step()); if(going) {setImmediate(really_go)}})()
+    }
+
+
+
+    var pipeline = [shifter, drawer]
+    var renderer = build_renderer(pipeline)
+    
+    
+    
+    
+    /*
+        
+    */
+    
+    
+    
+    
+    ~function() {
+        //// postpone until next tick
+        // inspired by http://dbaron.org/log/20100309-faster-timeouts
+        var later = []
+        var messageName = 12345
+        var gimme_a_tick = true
+
+        function setImmediate(fun) {
+            later.push(fun)
+        
+            if(gimme_a_tick) {
+                gimme_a_tick = false
+                window.postMessage(messageName, "*")
+            }
+        
+            return false
+        }
+
+        function handleMessage(event) {
+            if(event.data != messageName) return false
+
+            event.stopPropagation()
+            gimme_a_tick = true
+
+            var now = later
+            later = []
+
+            for(var i=0, l=now.length; i < l; i++)
+                now[i]()
+        }
+  
+        if(typeof window != 'undefined') {
+            window.addEventListener('message', handleMessage, true)
+            window.setImmediate = setImmediate
+        }
+    }()
+    
+  </script>
+
+</body>  
+</html>
