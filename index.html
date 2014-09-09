@@ -2,19 +2,27 @@
 <html>
 <head>
   <title>Data structure vizualizer</title>
+  <script src="Immutable.min.js"></script>
   <style type="text/css">
+    #canvas {
+      height: 400px;
+      width: 400px;
+    }
   </style> 
 </head>
 <body>
 
-  <canvas id="canvas" width="300" height="100"></canvas>
+  <canvas id="canvas" width="100" height="100"></canvas>
+  
+  <button id="pushme">Push me</button>
 
   <script>
     var el = document.getElementById.bind(document)
     var ctx = el('canvas').getContext('2d')
     
-    function shift(dx, context) {
-      context = context || ctx
+    // canvas manipulation functions
+    
+    function shift(context, dx) {
       dx = dx || -1
       
       var w = context.canvas.width
@@ -27,75 +35,51 @@
       return false
     }
     
-    function shifter(data, context) {
-      shift(-1 * (data||[]).length)
-      return data
-    }
-    
-    function draw(data, offset, context) {
-      context = context || ctx
+    function draw_cols(context, data, offset) {
       data = data || ds
       
       var w = context.canvas.width
       var h = context.canvas.height
       
-      var list = flatten(data)
-      list.forEach(function(item, index) {        
+      // var list = flatten(data)
+      data.forEach(function(item, index) {        
         var c = "hsl(" + item + ", 60%, 60%)"
+        if(item == -1)
+          c = "hsl(0, 0%, 0%)"
         context.fillStyle = c
         context.fillRect(w-1-offset, index, 1, 1);
       })
       
-      return false // THINK: ???
+      return false
+    }
+    
+    // prep funs for pipeline
+    
+    var shiftctx = partial(shift, ctx)
+    var drawctx = partial(draw_cols, ctx)
+    
+    function shifter(data) {
+      shiftctx(-1 * (data||[]).length)
+      return data
     }
     
     function drawer(data, context) {
       var len = data.length
-      data.forEach(function(arr, ind) {draw(arr, len-ind)})
+      data.forEach(function(arr, ind) {drawctx(arr, len-ind)})
       return data
     }
     
-    function draw_color(context, color) {
-      context = context || ctx
-      color = color || Math.floor( Math.random() * 360 )
-      
-      var w = context.canvas.width
-      var h = context.canvas.height
-      var c = "hsl(" + color + ", 60%, 60%)"
-      
-      ctx.fillStyle = c
-      ctx.fillRect(w-1, 0, 1, h);
-    }
-    
-    // function go(fun) {
-    //   going = true;
-    //   fun = fun || both
-    //   ~(function really_go() {fun(); if(going) {window.requestAnimationFrame(really_go)}})()
-    // }
-
-    function stop() {going = false}
     
     ///// a data structure thing ok
     
     ds = []
     
-    var ran = function() {return Math.floor(Math.random() * 256)}
-
-    var step = function() {
-      ds.push(ran()); ds.shift(); return ds}
-    
-    var init = function() {for(i=0; i<100; i++) { ds.push(ran()) }}
-    
-    function both() {step(); draw(); shift();}
+    var init = function() {for(i=0; i<100; i++) { ds.push(rand()) }}
     
     init()
     
     ////// 
         
-    function flatten(data) {
-      return data
-    }
-    
     // Object.observe(ds, function(changes){
     //   changes.forEach(function(change) {
     //     console.log(change.type, change.name, change.oldValue);
@@ -123,12 +107,11 @@
     
     render -> doctor_data -> step
     
-    
-    
-    
+    what I really want is a thing with some stuff that does things.
     
     
     */
+    
     
     
     build_renderer = function(pipeline) {
@@ -146,7 +129,7 @@
       }
       
       return function(data) {
-        queued_data.push(data.slice()) // OPT: don't need slice if it's persistent
+        queued_data.push(data) 
         if(queued_render) return false
 
         queued_render = true
@@ -154,30 +137,127 @@
         // setTimeout(renderer, 100)
       }
     }
+
+
+
+    //////
     
 
+    function flatten(data) {
+      if(!data && data !== 0)
+        return NaN
+      
+      if(typeof data == 'object') 
+        data = flatten_object(data)
+
+      if(Array.isArray(data))
+        return flatten_array(data)
+      
+      if(typeof data != 'number')
+        return NaN
+        
+      return data
+    }
     
-    var go = function(fun) {
-      fun = fun || renderer
+    function flatten_array(arr) {
+      return arr.reduce(function(acc, item) {return acc.concat(flatten(item))}, []).filter(NoNaN).concat(-1)
+      // return arr.map(flatten).filter(NoNaN)
+    }
+    
+    function flatten_object(obj) {
+      return Object.keys(obj).reduce(function(acc, key) {return acc.concat(obj[key])}, [])
+    }
+    
+    function NoNaN(x) {
+      return x === x
+    }
+    
+    function valuation(data) {
+      return data
+    }
+    
+    function colorize(data) {
+      return data
+    }
+    
+
+    function stop() {going = false}
+
+    var go_1 = function(fun) {
       going = true; 
-      ~(function really_go() {renderer(step()); if(going) {setTimeout(really_go, 30)}})()
-      // ~(function really_go() {renderer(step()); if(going) {setImmediate(really_go)}})()
+      ~(function really_go() {fun(); if(going) {setTimeout(really_go, 30)}})()
+      // ~(function really_go() {fun(step()); if(going) {setImmediate(really_go)}})()
     }
 
+    function flatten_each(data) {return data.map(flatten)}
 
-
-    var pipeline = [shifter, drawer]
+    var pipeline = [flatten_each, valuation, colorize, shifter, drawer]
     var renderer = build_renderer(pipeline)
-    
-    
-    
-    
-    /*
         
-    */
+    
+    
+    // stepers
+
+    function simple_step() { ds.push(rand()); ds.shift(); return ds.slice() }
+    
+    function tricky_step() { 
+      if(rand(1.5)) {
+        ds.push(rand()); 
+        ds.shift();         
+      }
+      else if(rand(1.1)) {
+        ds[25] = 0
+        ds[26] = 0
+        ds[27] = 0
+      } 
+      else if(rand(1.5)) {
+        ds[75] = 200
+        ds[76] = 200
+      }
+      return ds.slice()
+    }
+    
+    /// vector
+    
+    var vect = Immutable.Vector()
+    
+    for (var i = 0; i < 80; i++) {
+      vect = vect.push(rand())
+    }
+    
+    function vector_step() {
+      vect = vect.push(rand()).shift() // TODO: do this sans global
+      return vect
+    }
+    
+    /// 
     
     
     
+    
+    
+    var gobase = function(stepfun) { renderer( stepfun() ) }
+    
+    var realfun = vector_step
+    var go = partial(go_1, partial(gobase, realfun))
+    
+    // var go = function(fun) {
+    //   fun = fun || renderer
+    //   going = true;
+    //   ~(function really_go() {renderer(step()); if(going) {setTimeout(really_go, 30)}})()}
+    
+    
+    // helpers
+    
+    function rand(n) { return Math.floor(Math.random() * (n||256)) }
+    
+    function partial(fun) {
+      var args = [].slice.call(arguments, 1)
+      return function() {
+        var new_args = [].slice.call(arguments)
+        return fun.apply(fun, args.concat(new_args))
+      }
+    }
     
     ~function() {
         //// postpone until next tick
@@ -216,7 +296,33 @@
         }
     }()
     
+    
+    
+    /*
+      dead code
+    
+      function draw_color(context, color) {
+        context = context || ctx
+        color = color || Math.floor( Math.random() * 360 )
+      
+        var w = context.canvas.width
+        var h = context.canvas.height
+        var c = "hsl(" + color + ", 60%, 60%)"
+      
+        ctx.fillStyle = c
+        ctx.fillRect(w-1, 0, 1, h);
+      }
+        
+    
+    */
+    
+    el('pushme').addEventListener('click', function() {
+      for (var i = 0; i < 9; i++) {
+        ds[5+i*10] = 300
+      }
+    })
+    
   </script>
-
+  
 </body>  
 </html>
