@@ -165,7 +165,7 @@
     }
     
     function flatten_object(obj) {
-      return Object.keys(obj).reduce(function(acc, key) {return acc.concat(obj[key])}, [])
+      return Object.keys(obj).reduce(function(acc, key) {return acc.concat(obj[key])}, []).concat(-1)
     }
     
     function NoNaN(x) {
