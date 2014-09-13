@@ -4,15 +4,15 @@
   <title>Data structure vizualizer</title>
   <script src="Immutable.min.js"></script>
   <style type="text/css">
-    #canvas {
+/*    #canvas {
       height: 400px;
       width: 400px;
     }
-  </style> 
+*/  </style> 
 </head>
 <body>
 
-  <canvas id="canvas" width="100" height="100"></canvas>
+  <canvas id="canvas" width="800" height="650"></canvas>
   
   <button id="pushme">Push me</button>
 
@@ -53,10 +53,34 @@
       return false
     }
     
+    function fancy_draw_cols(context, data, offset) {
+      data = data || ds
+      
+      var w = context.canvas.width
+      var h = context.canvas.height
+      
+      // var list = flatten(data)
+      data.forEach(function(item, index) {
+        var hue = item[0] ?    item[0]     : item
+        var sat = item[1] ? ''+item[1]+'%' : '60%'
+        var lit = item[2] ? ''+item[2]+'%' : '60%'
+        
+        var c = 'hsl(' + hue + ', ' + sat + ', ' + lit + ')'
+        
+        if(item == -1)
+          c = 'hsl(0, 0%, 0%)'
+          
+        context.fillStyle = c
+        context.fillRect(w-1-offset, index, 1, 1);
+      })
+      
+      return false
+    }
+    
     // prep funs for pipeline
     
     var shiftctx = partial(shift, ctx)
-    var drawctx = partial(draw_cols, ctx)
+    var drawctx = partial(fancy_draw_cols, ctx)
     
     function shifter(data) {
       shiftctx(-1 * (data||[]).length)
@@ -139,10 +163,8 @@
     }
 
 
-
     //////
     
-
     function flatten(data) {
       if(!data && data !== 0)
         return NaN
@@ -160,45 +182,70 @@
     }
     
     function flatten_array(arr) {
-      return arr.reduce(function(acc, item) {return acc.concat(flatten(item))}, []).filter(NoNaN).concat(-1)
+      return ['down'].concat(arr.reduce(function(acc, item) {return acc.concat(flatten(item))}, []).filter(NoNaN), 'up')
       // return arr.map(flatten).filter(NoNaN)
     }
     
     function flatten_object(obj) {
-      return Object.keys(obj).reduce(function(acc, key) {return acc.concat(obj[key])}, []).concat(-1)
+      return ['down'].concat(Object.keys(obj).reduce(function(acc, key) {return acc.concat(obj[key])}, []), 'up')
     }
     
     function NoNaN(x) {
-      return x === x
+      return x === x // o ___ o
     }
     
-    function valuation(data) {
-      return data
+    function valuation(list) {
+      return list.map(function(data) {
+        var level = 0
+        return data.reduce(function(acc, item) {
+          if(+item == item) {
+            var sat = Math.max(100+level*10, 0)
+            acc.push([item, sat, sat]) // TODO: make this optional
+            return acc
+          }
+          
+          if(item == 'down') level--
+          if(item == 'up')   level++
+          acc.push([1, 1, 1]) // TODO: make this optional
+          return acc
+        }, [])
+      })
     }
     
     function colorize(data) {
       return data
     }
     
-
+    
+    /// make it go. or stop. whatever.
+    
+    going = false /// what are you serious? nononono. eradicate this.
+    
     function stop() {going = false}
 
-    var go_1 = function(fun) {
+    var goer = function(fun) {
       going = true; 
       ~(function really_go() {fun(); if(going) {setTimeout(really_go, 30)}})()
       // ~(function really_go() {fun(step()); if(going) {setImmediate(really_go)}})()
+    }
+    
+    var makego = function(stepper) {
+      var gobase = function(stepfun) { renderer( stepfun() ) }
+      return partial(goer, partial(gobase, stepper))
     }
 
     function flatten_each(data) {return data.map(flatten)}
 
     var pipeline = [flatten_each, valuation, colorize, shifter, drawer]
     var renderer = build_renderer(pipeline)
-        
     
     
-    // stepers
+    // steppers and goers
 
     function simple_step() { ds.push(rand()); ds.shift(); return ds.slice() }
+    
+    var go_simple = makego(simple_step)
+    
     
     function tricky_step() { 
       if(rand(1.5)) {
@@ -217,11 +264,13 @@
       return ds.slice()
     }
     
-    /// vector
+    var go_tricky = makego(tricky_step)
+    
+    /// fb vector
     
     var vect = Immutable.Vector()
     
-    for (var i = 0; i < 80; i++) {
+    for (var i = 0; i < 500; i++) {
       vect = vect.push(rand())
     }
     
@@ -230,16 +279,31 @@
       return vect
     }
     
-    /// 
+    var go_vector = makego(vector_step)
+    
+    /// fb map
+    
+    var map = Immutable.Map()
+    
+    function map_step() {
+      var n = rand(350)
+      map = map.set('a'+n, n) // TODO: do this sans global
+      return map
+    }
+    
+    var go_map = makego(map_step)
+    
+    
+    // try sequentially
+    // binary tree -- change saturation so you can see unbalanced tree easily
+    // diff coloring so you can see hotspots
     
     
     
     
-    
-    var gobase = function(stepfun) { renderer( stepfun() ) }
-    
-    var realfun = vector_step
-    var go = partial(go_1, partial(gobase, realfun))
+    // var realfun = map_step
+    // var realfun = vector_step
+    // var go = partial(go_1, partial(gobase, realfun))
     
     // var go = function(fun) {
     //   fun = fun || renderer
