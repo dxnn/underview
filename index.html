@@ -27,7 +27,8 @@
     <p><button id="vector_mori">Mori Vector</button></p>
     
     <p><button id="queue_mori">Mori Queue</button></p>
-    <p><button id="map_mori">Mori Map random</button></p>
+    <p><button id="map_mori_r">Mori Map random</button></p>
+    <p><button id="map_mori_s">Mori Map sequential</button></p>
 
     <p><button id="vector_fb">FB Vector queue</button></p>
     <p><button id="map_fb_r">FB Map random</button></p>
@@ -340,12 +341,22 @@
     
     /// mori map
 
-    var map_mori = mori.hash_map()
+    var map_mori_r = mori.hash_map()
     
-    function map_mori_step() {
+    function map_mori_r_step() {
       var n = rand(350)
-      map_mori = mori.assoc(map_mori, 'a'+n, n)
-      return map_mori
+      map_mori_r = mori.assoc(map_mori_r, 'a'+n, n)
+      return map_mori_r
+    }
+    
+    /// mori map sequential
+
+    var map_mori_s = mori.hash_map(), map_mori_s_n = 0
+    
+    function map_mori_s_step() {
+      n = ++map_mori_s_n
+      map_mori_s = mori.assoc(map_mori_s, 'a'+n, n)
+      return map_mori_s
     }
     
     
@@ -373,10 +384,10 @@
     
     /// fb map sequential
     
-    var map_fb_s = Immutable.Map()
+    var map_fb_s = Immutable.Map(), map_fb_s_n = 0
     
     function map_fb_s_step() {
-      var n = rand(350)
+      n = ++map_fb_s_n
       map_fb_s = map_fb_s.set('a'+n, n) // TODO: do this sans global
       return map_fb_s
     }
@@ -389,7 +400,8 @@
 
     var go_vector_mori = makego(vector_mori_step)
     var go_queue_mori = makego(queue_mori_step)
-    var go_map_mori = makego(map_mori_step)
+    var go_map_mori_r = makego(map_mori_r_step)
+    var go_map_mori_s = makego(map_mori_s_step)
 
     var go_vector = makego(vector_step)
     var go_map_fb_r = makego(map_fb_r_step)
@@ -409,7 +421,8 @@
 
     clickit('vector_mori', go_vector_mori)
     clickit('queue_mori', go_queue_mori)
-    clickit('map_mori', go_map_mori)
+    clickit('map_mori_r', go_map_mori_r)
+    clickit('map_mori_s', go_map_mori_s)
 
     clickit('vector_fb', go_vector)
     clickit('map_fb_r', go_map_fb_r)
