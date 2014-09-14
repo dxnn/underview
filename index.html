@@ -14,12 +14,27 @@
 
   <canvas id="canvas" width="800" height="650"></canvas>
   
-  <button id="pushme">Push me</button>
+  <div style="float:right">
+    <p><button id="simple">simple queue</button></p>
+    <p><button id="tricky">tricky queue</button></p>
+    <p><button id="fb_vector">FB Vector</button></p>
+    <p><button id="fb_map">FB Map</button></p>
+    
+    <hr />
+    
+    <p><button id="stop">Stop!</button></p>    
+    <p><button id="toggle_black">Toggle black</button></p>
+
+    <p>Sat: <input type="range" id="sat_value" value="10" max="50"></p>
+    <p>Lit: <input type="range" id="lit_value" value="40" max="60"></p>
+    
+    <p><button id="poke_simple">Poke simple</button></p>    
+  </div>
 
   <script>
     var el = document.getElementById.bind(document)
     var ctx = el('canvas').getContext('2d')
-    
+        
     // canvas manipulation functions
     
     function shift(context, dx) {
@@ -194,19 +209,31 @@
       return x === x // o ___ o
     }
     
+    var stupidGlobalSatConstant = 10
+    var stupidGlobalLitConstant = 40
+    
+    var stupidGlobalHueFun = function(item, level) { return item }
+    var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupidGlobalSatConstant, 0) }
+    var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupidGlobalLitConstant, 0) }
+    
+    var stupidGlobalBlackLines = false
+    
     function valuation(list) {
       return list.map(function(data) {
         var level = 0
         return data.reduce(function(acc, item) {
           if(+item == item) {
-            var sat = Math.max(100+level*10, 0)
-            acc.push([item, sat, sat]) // TODO: make this optional
+            var hue = stupidGlobalHueFun(item, level)
+            var sat = stupidGlobalSatFun(item, level)
+            var lit = stupidGlobalLitFun(item, level)
+            acc.push([hue, sat, lit]) // oh no not like that!
             return acc
           }
           
           if(item == 'down') level--
           if(item == 'up')   level++
-          acc.push([1, 1, 1]) // TODO: make this optional
+          if(stupidGlobalBlackLines)
+            acc.push([1, 1, 1]) // oh no not like that!
           return acc
         }, [])
       })
@@ -243,9 +270,7 @@
     // steppers and goers
 
     function simple_step() { ds.push(rand()); ds.shift(); return ds.slice() }
-    
-    var go_simple = makego(simple_step)
-    
+        
     
     function tricky_step() { 
       if(rand(1.5)) {
@@ -264,7 +289,6 @@
       return ds.slice()
     }
     
-    var go_tricky = makego(tricky_step)
     
     /// fb vector
     
@@ -279,7 +303,6 @@
       return vect
     }
     
-    var go_vector = makego(vector_step)
     
     /// fb map
     
@@ -291,6 +314,12 @@
       return map
     }
     
+
+    // go fun
+
+    var go_simple = makego(simple_step)
+    var go_tricky = makego(tricky_step)
+    var go_vector = makego(vector_step)
     var go_map = makego(map_step)
     
     
@@ -299,16 +328,30 @@
     // diff coloring so you can see hotspots
     
     
+    // dom bindings
     
+    function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
+    clickit('simple', go_simple)
+    clickit('tricky', go_tricky)
+    clickit('fb_vector', go_vector)
+    clickit('fb_map', go_map)
+    clickit('stop', stop)
     
-    // var realfun = map_step
-    // var realfun = vector_step
-    // var go = partial(go_1, partial(gobase, realfun))
+    clickit('toggle_black', function() { stupidGlobalBlackLines = !stupidGlobalBlackLines })
+
+    el('sat_value').addEventListener('change', function(elem) { 
+      stupidGlobalSatConstant = elem.target.value
+    })
+    el('lit_value').addEventListener('change', function(elem) { 
+      stupidGlobalLitConstant = elem.target.value
+    })
     
-    // var go = function(fun) {
-    //   fun = fun || renderer
-    //   going = true;
-    //   ~(function really_go() {renderer(step()); if(going) {setTimeout(really_go, 30)}})()}
+    clickit('poke_simple', function() {
+      for (var i = 0; i < 9; i++) {
+        ds[5+i*10] = 300
+      }
+    }) 
+    
     
     
     // helpers
@@ -379,13 +422,7 @@
         
     
     */
-    
-    el('pushme').addEventListener('click', function() {
-      for (var i = 0; i < 9; i++) {
-        ds[5+i*10] = 300
-      }
-    })
-    
+        
   </script>
   
 </body>  
