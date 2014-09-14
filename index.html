@@ -2,7 +2,13 @@
 <html>
 <head>
   <title>Data structure vizualizer</title>
+  <script src="mori.js"></script>
   <script src="Immutable.min.js"></script>
+  <!-- 
+    You can find grab include files here:
+    http://bentodojo.com/underview/mori.js
+    http://bentodojo.com/underview/Immutable.min.js
+  -->
   <style type="text/css">
 /*    #canvas {
       height: 400px;
@@ -12,13 +18,20 @@
 </head>
 <body>
 
-  <canvas id="canvas" width="800" height="650"></canvas>
+  <canvas id="canvas" width="800" height="680"></canvas>
   
   <div style="float:right">
     <p><button id="simple">simple queue</button></p>
     <p><button id="tricky">tricky queue</button></p>
-    <p><button id="fb_vector">FB Vector</button></p>
-    <p><button id="fb_map">FB Map</button></p>
+
+    <p><button id="vector_mori">Mori Vector</button></p>
+    
+    <p><button id="queue_mori">Mori Queue</button></p>
+    <p><button id="map_mori">Mori Map random</button></p>
+
+    <p><button id="vector_fb">FB Vector queue</button></p>
+    <p><button id="map_fb_r">FB Map random</button></p>
+    <p><button id="map_fb_s">FB Map sequential</button></p>
     
     <hr />
     
@@ -290,40 +303,88 @@
     }
     
     
+    /// mori vector
+    // redo this!
+    
+    var vector_mori = mori.mutable.thaw(mori.vector())
+    
+    function vector_mori_step() {
+      vector_mori = mori.mutable.conj1(vector_mori, rand())
+      if(mori.count(vector_mori) > 350)
+        vector_mori = mori.mutable.pop(vector_mori)
+      return vector_mori
+    }
+    
+    /// mori queue
+
+    var queue_mori = mori.queue()
+    
+    function queue_mori_step() {
+      queue_mori = mori.conj(queue_mori, rand())
+      if(mori.count(queue_mori) > 200)
+        queue_mori = mori.pop(queue_mori)
+      return queue_mori
+    }
+    
+    /// mori map
+
+    var map_mori = mori.hash_map()
+    
+    function map_mori_step() {
+      var n = rand(350)
+      map_mori = mori.assoc(map_mori, 'a'+n, n)
+      return map_mori
+    }
+    
+    
     /// fb vector
     
     var vect = Immutable.Vector()
     
-    for (var i = 0; i < 500; i++) {
-      vect = vect.push(rand())
-    }
-    
     function vector_step() {
-      vect = vect.push(rand()).shift() // TODO: do this sans global
+      vect = vect.push(rand()) // TODO: do this sans global
+      if(vect.length > 360)
+        vect = vect.shift()
       return vect
     }
     
     
-    /// fb map
+    /// fb map random
     
-    var map = Immutable.Map()
+    var map_fb_r = Immutable.Map()
     
-    function map_step() {
+    function map_fb_r_step() {
       var n = rand(350)
-      map = map.set('a'+n, n) // TODO: do this sans global
-      return map
+      map_fb_r = map_fb_r.set('a'+n, n) // TODO: do this sans global
+      return map_fb_r
     }
     
-
+    /// fb map sequential
+    
+    var map_fb_s = Immutable.Map()
+    
+    function map_fb_s_step() {
+      var n = rand(350)
+      map_fb_s = map_fb_s.set('a'+n, n) // TODO: do this sans global
+      return map_fb_s
+    }
+    
+    
     // go fun
 
     var go_simple = makego(simple_step)
     var go_tricky = makego(tricky_step)
+
+    var go_vector_mori = makego(vector_mori_step)
+    var go_queue_mori = makego(queue_mori_step)
+    var go_map_mori = makego(map_mori_step)
+
     var go_vector = makego(vector_step)
-    var go_map = makego(map_step)
+    var go_map_fb_r = makego(map_fb_r_step)
+    var go_map_fb_s = makego(map_fb_s_step)
     
     
-    // try sequentially
+    // try sequentially instead of adding randomly to the map
     // binary tree -- change saturation so you can see unbalanced tree easily
     // diff coloring so you can see hotspots
     
@@ -333,10 +394,16 @@
     function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
     clickit('simple', go_simple)
     clickit('tricky', go_tricky)
-    clickit('fb_vector', go_vector)
-    clickit('fb_map', go_map)
+
+    clickit('vector_mori', go_vector_mori)
+    clickit('queue_mori', go_queue_mori)
+    clickit('map_mori', go_map_mori)
+
+    clickit('vector_fb', go_vector)
+    clickit('map_fb_r', go_map_fb_r)
+    clickit('map_fb_s', go_map_fb_s)
+
     clickit('stop', stop)
-    
     clickit('toggle_black', function() { stupidGlobalBlackLines = !stupidGlobalBlackLines })
 
     el('sat_value').addEventListener('change', function(elem) { 
