@@ -248,7 +248,7 @@
           if(item == 'down') level--
           if(item == 'up')   level++
           if(stupidGlobalBlackLines)
-            acc.push([1, 1, 1]) // oh no not like that!
+            acc.push([1, 1, 1])
           return acc
         }, [])
       })
@@ -315,14 +315,15 @@
     
     
     /// mori vector
-    // redo this!
+    /// TODO: pixel compression (4-to-1 would show the 1024 transition)
     
-    var vector_mori = mori.mutable.thaw(mori.vector())
+    var vector_mori = mori.vector()
     
     function vector_mori_step() {
-      vector_mori = mori.mutable.conj1(vector_mori, rand())
-      if(mori.count(vector_mori) > 350)
-        vector_mori = mori.mutable.pop(vector_mori)
+      if(mori.count(vector_mori) < 200 || rand(3))
+        vector_mori = mori.conj(vector_mori, rand())
+      else
+        vector_mori = mori.pop(vector_mori)
       return vector_mori
     }
     
