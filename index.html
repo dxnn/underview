@@ -40,8 +40,9 @@
 
     <p>Sat: <input type="range" id="sat_value" value="10" max="50"></p>
     <p>Lit: <input type="range" id="lit_value" value="40" max="60"></p>
+    <p>Spd: <input type="range" id="spd_value" value="30" max="200"></p>
     
-    <p><button id="poke_simple">Poke simple</button></p>    
+    <p><button id="poke_simple">Poke simple</button></p>
   </div>
 
   <script>
@@ -57,7 +58,7 @@
       var h = context.canvas.height
       var imageData = context.getImageData(0, 0, w, h);
       
-      // ctx.clearRect(0, 0, w, h);
+      ctx.clearRect(0, 0, w, h);
       context.putImageData(imageData, dx, 0);
       
       return false
@@ -224,6 +225,7 @@
     
     var stupidGlobalSatConstant = 10
     var stupidGlobalLitConstant = 40
+    var stupidGlobalSpdConstant = 30
     
     var stupidGlobalHueFun = function(item, level) { return item }
     var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupidGlobalSatConstant, 0) }
@@ -265,7 +267,16 @@
 
     var goer = function(fun) {
       going = true; 
-      ~(function really_go() {fun(); if(going) {setTimeout(really_go, 30)}})()
+      function really_go() {
+        fun() 
+        if(going) {
+          if(+stupidGlobalSpdConstant)
+            setTimeout(really_go, +stupidGlobalSpdConstant)
+          else
+            setImmediate(really_go)
+        }
+      }
+      really_go()
       // ~(function really_go() {fun(step()); if(going) {setImmediate(really_go)}})()
     }
     
@@ -411,6 +422,9 @@
     })
     el('lit_value').addEventListener('change', function(elem) { 
       stupidGlobalLitConstant = elem.target.value
+    })
+    el('spd_value').addEventListener('change', function(elem) { 
+      stupidGlobalSpdConstant = elem.target.value
     })
     
     clickit('poke_simple', function() {
