@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+  <title>Data structure visualizer take 1</title>
+  <script src="underview.js"></script>
+  <style type="text/css">
+    #canvas {
+      height: 500px;
+      width: 500px;
+    }
+  </style> 
+</head>
+<body>
+
+  <canvas id="canvas" width="100" height="100"></canvas>
+  
+  <script>
+      
+    var el = document.getElementById.bind(document)
+    var ctx = el('canvas').getContext('2d')
+        
+
+    // get rid of this
+    
+    var shiftctx = partial(shift, ctx)
+    var drawctx = partial(fancy_draw_cols, ctx)
+    
+    function shifter(data) {
+      shiftctx(-1 * (data||[]).length)
+      return data
+    }
+    
+    function drawer(data, context) {
+      var len = data.length
+      data.forEach(function(arr, ind) {drawctx(arr, len-ind)})
+      return data
+    }
+    
+    
+    /// keep this part:
+    
+    
+    var pipeline = [flatten_each, valuation, colorize, shifter, drawer]
+    var render = build_renderer(pipeline) // pass ctx in here
+    
+    
+    var pushrand = function(x, n) { for(i=0, l=n||50; i<l; i++) x.push(rand()) /* mutates x */ }
+    
+    
+    /// do this part live
+    /*
+    
+    ds = []
+    
+    pushrand(ds)
+    
+    ds
+    
+    flatten(ds)
+
+    flatten([1, [2, [3, 4]]])
+    
+    render(ds)
+    
+    Array.observe(ds, function(c) {
+      render(ds)
+    });
+    
+    ds.push(1)
+    
+    ds.push(rand()); ds.shift()
+    
+    showBlack()
+    
+    */
+  </script>
+  
+</body>  
+</html>

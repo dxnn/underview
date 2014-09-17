@@ -74,7 +74,7 @@ function fancy_draw_cols(context, data, offset) {
 }
 
 
-//// renderer
+//// pipeline -> renderer
 
 build_renderer = function(pipeline) {
   var queued_render = false
@@ -146,6 +146,8 @@ setSat = function(x) {stupidGlobalSatConstant = x}
 setLit = function(x) {stupidGlobalLitConstant = x}
 setSpd = function(x) {stupidGlobalSpdConstant = x}
 
+toggleBlack = function() {stupidGlobalBlackLines = !stupidGlobalBlackLines}
+showBlack = function() {stupidGlobalBlackLines = true}
 
 function valuation(list) {
   return list.map(function(data) {
@@ -171,7 +173,6 @@ function valuation(list) {
 function colorize(data) {
   return data
 }
-
 
 
 /// make it go. or stop. whatever.
@@ -201,10 +202,6 @@ var makego = function(stepper) {
 }
 
 function flatten_each(data) {return data.map(flatten)}
-
-
-
-
 
 
 
