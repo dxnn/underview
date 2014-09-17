@@ -1,7 +1,7 @@
 <!doctype html>
 <html>
 <head>
-  <title>Data structure vizualizer</title>
+  <title>Data structure visualizer</title>
   <script src="mori.js"></script>
   <script src="Immutable.min.js"></script>
   <!-- 
@@ -166,13 +166,13 @@
     
     /// fb vector
     
-    var vect = Immutable.Vector()
+    var vector_fb = Immutable.Vector()
     
-    function vector_step() {
-      vect = vect.push(rand()) // TODO: do this sans global
-      if(vect.length > 360)
-        vect = vect.shift()
-      return vect
+    function vector_fb_step() {
+      vector_fb = vector_fb.push(rand()) // TODO: do this sans global
+      if(vector_fb.length > 360)
+        vector_fb = vector_fb.shift()
+      return vector_fb
     }
     
     
@@ -197,49 +197,33 @@
     }
     
     
-    // go fun
+    // go fun and dom bindings
 
-    var go_simple = makego(simple_step)
-    var go_tricky = makego(tricky_step)
-
-    var go_vector_mori = makego(vector_mori_step)
-    var go_queue_mori = makego(queue_mori_step)
-    var go_map_mori_r = makego(map_mori_r_step)
-    var go_map_mori_s = makego(map_mori_s_step)
-
-    var go_vector = makego(vector_step)
-    var go_map_fb_r = makego(map_fb_r_step)
-    var go_map_fb_s = makego(map_fb_s_step)
-    
-    
-    
-    // dom bindings
-    
     function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
-    clickit('simple', go_simple)
-    clickit('tricky', go_tricky)
 
-    clickit('vector_mori', go_vector_mori)
-    clickit('queue_mori', go_queue_mori)
-    clickit('map_mori_r', go_map_mori_r)
-    clickit('map_mori_s', go_map_mori_s)
-
-    clickit('vector_fb', go_vector)
-    clickit('map_fb_r', go_map_fb_r)
-    clickit('map_fb_s', go_map_fb_s)
-
+    clickit('simple', makego(simple_step))
+    clickit('tricky', makego(tricky_step))
+    
+    clickit('vector_mori', makego(vector_mori_step))
+    clickit('queue_mori',  makego(queue_mori_step))
+    clickit('map_mori_r',  makego(map_mori_r_step))
+    clickit('map_mori_s',  makego(map_mori_s_step))
+    
+    clickit('vector_fb', makego(vector_fb_step))
+    clickit('map_fb_r',  makego(map_fb_r_step))
+    clickit('map_fb_s',  makego(map_fb_s_step))
+    
+    
+    // other controls
+    
     clickit('stop', stop)
     clickit('toggle_black', function() { stupidGlobalBlackLines = !stupidGlobalBlackLines })
-
-    el('sat_value').addEventListener('change', function(elem) { 
-      stupidGlobalSatConstant = elem.target.value
-    })
-    el('lit_value').addEventListener('change', function(elem) { 
-      stupidGlobalLitConstant = elem.target.value
-    })
-    el('spd_value').addEventListener('change', function(elem) { 
-      stupidGlobalSpdConstant = elem.target.value
-    })
+    
+    function changeit(elstr, fun) { el(elstr).addEventListener('change', function(x) { fun(x) }) }
+    
+    changeit('sat_value', function(elem) { setSat(elem.target.value) })
+    changeit('lit_value', function(elem) { setLit(elem.target.value) })
+    changeit('spd_value', function(elem) { setSpd(elem.target.value) })
     
     clickit('poke_simple', function() {
       for (var i = 0; i < 9; i++) {
@@ -247,9 +231,6 @@
       }
     }) 
     
-    
-    
-        
   </script>
   
 </body>  

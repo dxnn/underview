@@ -1,5 +1,21 @@
+/*
+ __  __     __   __     _____     ______     ______     __   __   __     ______     __     __    
+/\ \/\ \   /\ "-.\ \   /\  __-.  /\  ___\   /\  == \   /\ \ / /  /\ \   /\  ___\   /\ \  _ \ \   
+\ \ \_\ \  \ \ \-.  \  \ \ \/\ \ \ \  __\   \ \  __<   \ \ \'/   \ \ \  \ \  __\   \ \ \/ ".\ \  
+ \ \_____\  \ \_\\"\_\  \ \____-  \ \_____\  \ \_\ \_\  \ \__|    \ \_\  \ \_____\  \ \__/".~\_\ 
+  \/_____/   \/_/ \/_/   \/____/   \/_____/   \/_/ /_/   \/_/      \/_/   \/_____/   \/_/   \/_/ 
+                                                                                                 
+A different perspective on your data
+
+*/
+
+UV = {}
+
+
+
 // canvas manipulation functions
 
+// var UV.shift = function(context, dx) {
 function shift(context, dx) {
   dx = dx || -1
   
@@ -13,6 +29,7 @@ function shift(context, dx) {
   return false
 }
 
+// var UV.draw_cols = function(context, data, offset) {
 function draw_cols(context, data, offset) {
   data = data || ds
   
@@ -31,6 +48,7 @@ function draw_cols(context, data, offset) {
   return false
 }
 
+// var UV.fancy_draw_cols = function(context, data, offset) {
 function fancy_draw_cols(context, data, offset) {
   data = data || ds
   
@@ -123,6 +141,11 @@ var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupi
 var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupidGlobalLitConstant, 0) }
 
 var stupidGlobalBlackLines = false
+
+setSat = function(x) {stupidGlobalSatConstant = x}
+setLit = function(x) {stupidGlobalLitConstant = x}
+setSpd = function(x) {stupidGlobalSpdConstant = x}
+
 
 function valuation(list) {
   return list.map(function(data) {
