@@ -48,37 +48,13 @@
   </div>
 
   <script>
-    // Object.observe(ds, function(changes){
-    //   changes.forEach(function(change) {
-    //     console.log(change.type, change.name, change.oldValue);
-    //   });
-    // });
-    
-    // Array.observe(ds, function(changeRecords) {
-    //   console.log('Array observe', changeRecords);
-    // });
-    
 
     var el = document.getElementById.bind(document)
     var ctx = el('canvas').getContext('2d')
-        
+    
+    var pipeline = [flatten_each, valuation, colorize, shifter, drawer]
+    var renderer = build_renderer(pipeline, ctx)
 
-    // prep funs for pipeline
-    
-    var shiftctx = partial(shift, ctx)
-    var drawctx = partial(fancy_draw_cols, ctx)
-    
-    function shifter(data) {
-      shiftctx(-1 * (data||[]).length)
-      return data
-    }
-    
-    function drawer(data, context) {
-      var len = data.length
-      data.forEach(function(arr, ind) {drawctx(arr, len-ind)})
-      return data
-    }
-    
     
     ///// a data structure thing ok
     
@@ -92,8 +68,6 @@
         
     
 
-    var pipeline = [flatten_each, valuation, colorize, shifter, drawer]
-    var renderer = build_renderer(pipeline)
     
     
     // steppers and goers
@@ -200,6 +174,11 @@
     // go fun and dom bindings
 
     function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
+
+    function makego(stepper) {
+      var gobase = function(stepfun) { renderer( stepfun() ) }
+      return partial(goer, partial(gobase, stepper))
+    }
 
     clickit('simple', makego(simple_step))
     clickit('tricky', makego(tricky_step))

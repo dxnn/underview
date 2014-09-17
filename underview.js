@@ -12,44 +12,24 @@ A different perspective on your data
 UV = {}
 
 
-
 // canvas manipulation functions
 
 // var UV.shift = function(context, dx) {
-function shift(context, dx) {
+function shift(dx, context) {
   dx = dx || -1
   
   var w = context.canvas.width
   var h = context.canvas.height
   var imageData = context.getImageData(0, 0, w, h);
   
-  ctx.clearRect(0, 0, w, h);
+  context.clearRect(0, 0, w, h);
   context.putImageData(imageData, dx, 0);
   
   return false
 }
 
-// var UV.draw_cols = function(context, data, offset) {
-function draw_cols(context, data, offset) {
-  data = data || ds
-  
-  var w = context.canvas.width
-  var h = context.canvas.height
-  
-  // var list = flatten(data)
-  data.forEach(function(item, index) {        
-    var c = "hsl(" + item + ", 60%, 60%)"
-    if(item == -1)
-      c = "hsl(0, 0%, 0%)"
-    context.fillStyle = c
-    context.fillRect(w-1-offset, index, 1, 1);
-  })
-  
-  return false
-}
-
 // var UV.fancy_draw_cols = function(context, data, offset) {
-function fancy_draw_cols(context, data, offset) {
+function fancy_draw_cols(data, offset, context) {
   data = data || ds
   
   var w = context.canvas.width
@@ -73,10 +53,22 @@ function fancy_draw_cols(context, data, offset) {
   return false
 }
 
+function shifter(data, context) {
+  shift(-1 * (data||[]).length, context)
+  return data
+}
+
+function drawer(data, context) {
+  var len = data.length
+  data.forEach(function(arr, ind) {fancy_draw_cols(arr, len-ind, context)})
+  return data
+}
+
+
 
 //// pipeline -> renderer
 
-build_renderer = function(pipeline) {
+build_renderer = function(pipeline, context) {
   var queued_render = false
   var queued_data = []
   
@@ -84,7 +76,7 @@ build_renderer = function(pipeline) {
     queued_render = false
     
     pipeline.reduce(function(data, fun) {
-      return fun(data)
+      return fun(data, context)
     }, queued_data)
     
     queued_data = []
@@ -196,11 +188,6 @@ var goer = function(fun) {
   // ~(function really_go() {fun(step()); if(going) {setImmediate(really_go)}})()
 }
 
-var makego = function(stepper) {
-  var gobase = function(stepfun) { renderer( stepfun() ) }
-  return partial(goer, partial(gobase, stepper))
-}
-
 function flatten_each(data) {return data.map(flatten)}
 
 
@@ -270,7 +257,26 @@ function partial(fun) {
     ctx.fillStyle = c
     ctx.fillRect(w-1, 0, 1, h);
   }
-    
+  
+  function draw_cols(context, data, offset) {
+    data = data || ds
+  
+    var w = context.canvas.width
+    var h = context.canvas.height
+  
+    // var list = flatten(data)
+    data.forEach(function(item, index) {        
+      var c = "hsl(" + item + ", 60%, 60%)"
+      if(item == -1)
+        c = "hsl(0, 0%, 0%)"
+      context.fillStyle = c
+      context.fillRect(w-1-offset, index, 1, 1);
+    })
+  
+    return false
+  }
+
+  
 
 */
 
