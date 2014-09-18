@@ -99,12 +99,12 @@ function flatten(data) {
   if(!data && data !== 0)
     return NaN
   
-  if(typeof data == 'object') 
-    data = flatten_object(data)
-
   if(Array.isArray(data))
     return flatten_array(data)
   
+  if(typeof data == 'object') 
+    return flatten_object(data)
+
   if(typeof data != 'number')
     return NaN
     
@@ -117,15 +117,15 @@ function flatten_array(arr) {
 }
 
 function flatten_object(obj) {
-  return ['down'].concat(Object.keys(obj).reduce(function(acc, key) {return acc.concat(obj[key])}, []), 'up')
+  return ['down'].concat(Object.keys(obj).reduce(function(acc, key) {return acc.concat(flatten(obj[key]))}, []), 'up')
 }
 
 function NoNaN(x) {
   return x === x // o ___ o
 }
 
-var stupidGlobalSatConstant = 10
-var stupidGlobalLitConstant = 40
+var stupidGlobalSatConstant =  0
+var stupidGlobalLitConstant = 20
 var stupidGlobalSpdConstant = 30
 
 var stupidGlobalHueFun = function(item, level) { return item }
