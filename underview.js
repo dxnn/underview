@@ -124,6 +124,8 @@ function NoNaN(x) {
   return x === x // o ___ o
 }
 
+var stupidGlobalBlackLines = false
+
 var stupidGlobalSatConstant =  0
 var stupidGlobalLitConstant = 20
 var stupidGlobalSpdConstant = 30
@@ -132,7 +134,6 @@ var stupidGlobalHueFun = function(item, level) { return item }
 var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupidGlobalSatConstant, 0) }
 var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupidGlobalLitConstant, 0) }
 
-var stupidGlobalBlackLines = false
 
 setSat = function(x) {stupidGlobalSatConstant = x}
 setLit = function(x) {stupidGlobalLitConstant = x}
