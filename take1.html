@@ -14,45 +14,50 @@
 
   <canvas id="canvas" width="100" height="100"></canvas>
   
+  <p><button id="button" style="display:none">step</button></p>
+  
   <script>
     
     /// setup
     var el = document.getElementById.bind(document)
     var ctx = el('canvas').getContext('2d')
-        
+    
     var pipeline = [flatten_each, valuation, colorize, shifter, drawer]
-    var render = build_renderer(pipeline, ctx) // TODO: pass ctx in here
+    var render = build_renderer(pipeline, ctx)
     
-    /// helper
-    var pushrand = function(x, n) { for(i=0, l=n||50; i<l; i++) x.push(rand()) /* mutates x */ }
+    /// helpers
+    var take_random = function(n) { x=[]; for(i=0, l=n||99; i<l; i++) x.push(rand()); return x }
+    var take_sequential = function(n) { x=[]; for(i=0, l=n||99; i<l; i++) x.push(i+1); return x }
     
+    var button = el('button')
+    button.addEventListener('click', function() {y.push(rand()); y.shift()})
     
     /// do this part live
     /*
     
-    ds = []
+    x = take_sequential(100)
     
-    pushrand(ds)
+    render(x)
     
-    ds
+    y = take_random(100)
     
-    flatten(ds)
+    render(y)
+    
+    flatten(y)
 
     flatten([1, [2, [3, 4]]])
     
-    render(ds)
-    
-    Array.observe(ds, function(c) {
-      render(ds)
+    Array.observe(y, function(c) {
+      render(y)
     });
     
-    ds.push(1)
+    y.push(1)
     
-    ds.push(rand()); ds.shift()
+    y.push(rand()); y.shift()
+    
+    button.style.display = ''
     
     showBlack()
-    
-    
     
     */
   </script>
