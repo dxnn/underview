@@ -7,15 +7,174 @@
                                                                                                  
 A different perspective on your data
 
+TODOS:
+- allow multiple concurrent renderers
+- per-instantiation vars for lit sat etc -- or... general getters/setters for pipetypes? maybe.
+- pipetypes like flatten, valuation, colorize
+- steppers like map_mori_r which have: init, step, ... maybe that's all?
+- how do we do diffs? tree graphs? etc?
+
 */
 
-UV = {}
+UV = {}                                                     // our namespace
+
+UV.pipetypes  = {}                                          // for the rendering pipeline
+UV.steppers = {}                                            // the data structure bits
+UV.helpers  = {}                                            // mostly canvas wrappers
+
+UV.add_pipetype = function(name, pipetype) {
+  if(typeof pipetype != 'object') 
+    return UV.onError('Invalid pipetype')
+
+  if( typeof pipetype.batch  != 'function' 
+   && typeof pipetype.single != 'function'
+    ) return UV.onError('A pipetype needs a batch or single function')
+
+  if(UV.pipetypes[name]) 
+    return UV.onError('A pipetype with that name already exists')
+
+  UV.pipetypes[name] = pipetype
+  return true
+}
+
+UV.add_stepper = function(name, stepper) {                   // a particular data structure progression
+  if(typeof stepper != 'object') 
+    return UV.onError('Invalid stepper')
+
+  if(UV.steppers[name]) 
+    return UV.onError('A stepper with that name already exists')
+
+  if(typeof stepper.step != 'function')                      // step: DS -> DS
+    return UV.onError('A stepper must have a step function')
+
+  if(typeof stepper.init != 'function')                      // generate initial DS
+    stepper.init = UV.noop
+
+  stepper.data = stepper.init()
+  UV.steppers[name] = stepper
+  return true
+}
+
+UV.build_renderer = function(pipeline, context) {           // pipeline is a list of pipetype names or funs
+                                                            // context is a canvas context
+  var queued_render = false
+  var queued_data = []
+  var pipeline_state = []
+  
+  // TODO: errors for bad pipeline and context
+  
+  pipeline = pipeline.map(function(pipe) {                  // transform into composable functions
+    if(typeof pipe == 'function')
+      return pipe
+    if(typeof pipe == 'string')
+      pipe = UV.pipetypes[pipe]
+    
+    if(typeof (pipe||{}).batch == 'function')
+      return pipe.batch
+    if(typeof (pipe||{}).single == 'function')
+      return function(pallet) {return pallet.map(pipe.single)}
+    
+    return UV.onError('Invalid pipe in pipeline') || UV.identity 
+  })
+  
+  pipeline.forEach(function(pipe, index) {                  // capture state
+    pipeline_state[index] = {} 
+  })
+  
+  function renderer() {
+    queued_render = false
+    
+    pipeline.reduce(function(data, fun, index) {
+      var output = fun(data, pipeline_state[index], context)
+      
+      if(Array.isArray(output)) return output                // output array means no state
+      
+      pipeline_state[index] = output.state
+      return output.data
+    }, queued_data)
+    
+    queued_data = []
+  }
+  
+  return function(data) {
+    queued_data.push(data) 
+    if(queued_render) return false
+
+    queued_render = true
+    window.requestAnimationFrame(renderer)                   // THINK: could parametrize rAF
+  }
+}
 
 
-// canvas manipulation functions
 
-// var UV.shift = function(context, dx) {
-function shift(dx, context) {
+//////
+// I apologize for what you're about to see
+//////
+
+var stupidGlobalBlackLines = false
+
+var stupidGlobalSatConstant =  0
+var stupidGlobalLitConstant = 20
+var stupidGlobalSpdConstant = 30
+
+var stupidGlobalHueFun = function(item, level) { return item }
+var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupidGlobalSatConstant, 0) }
+var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupidGlobalLitConstant, 0) }
+
+setSat = function(x) {stupidGlobalSatConstant = x}
+setLit = function(x) {stupidGlobalLitConstant = x}
+setSpd = function(x) {stupidGlobalSpdConstant = x}
+
+toggleBlack = function() {stupidGlobalBlackLines = !stupidGlobalBlackLines}
+showBlack = function() {stupidGlobalBlackLines = true}
+
+
+going = false
+
+function stop() {going = false}
+
+var scheduler = function(renderer, stepper) {
+  going = true;
+  function schedule() {
+    var result = stepper.step(stepper.data) 
+    stepper.data = result
+    renderer(result)
+    
+    if(going) {
+      if(+stupidGlobalSpdConstant)
+        setTimeout(schedule, +stupidGlobalSpdConstant)
+      else
+        setImmediate(schedule)
+    }
+  }
+  schedule()
+  // ~(function really_go() {fun(step()); if(going) {setImmediate(really_go)}})()
+}
+
+// UV.get_stepfun = function(name) {
+//   return UV.steppers[name]
+//   // return function(stepfun) { renderer( stepfun() ) }
+// }
+
+
+
+// function flatten_each(data) {return data.map(flatten)}
+
+
+
+
+
+/// UV helper functions
+
+UV.noop = function() {}
+
+UV.identity = function(x) {return x}
+
+UV.onError = function(err) {                                 // replace this to suit your needs
+  console.error(err)
+}
+
+UV.helpers.shift = function(dx, context) {                   // effectfully affects the canvas
   dx = dx || -1
   
   var w = context.canvas.width
@@ -24,18 +183,14 @@ function shift(dx, context) {
   
   context.clearRect(0, 0, w, h);
   context.putImageData(imageData, dx, 0);
-  
-  return false
 }
 
-// var UV.fancy_draw_cols = function(context, data, offset) {
-function fancy_draw_cols(data, offset, context) {
+UV.helpers.draw_column = function(data, offset, context) {   // effectfully affects the canvas
   data = data || ds
   
   var w = context.canvas.width
   var h = context.canvas.height
   
-  // var list = flatten(data)
   data.forEach(function(item, index) {
     var hue = item[0] ?    item[0]     : item
     var sat = item[1] ? ''+item[1]+'%' : '60%'
@@ -49,151 +204,95 @@ function fancy_draw_cols(data, offset, context) {
     context.fillStyle = c
     context.fillRect(w-1-offset, index, 1, 1);
   })
-  
-  return false
-}
-
-function shifter(data, context) {
-  shift(-1 * (data||[]).length, context)
-  return data
-}
-
-function drawer(data, context) {
-  var len = data.length
-  data.forEach(function(arr, ind) {fancy_draw_cols(arr, len-ind, context)})
-  return data
 }
 
 
 
-//// pipeline -> renderer
 
-build_renderer = function(pipeline, context) {
-  var queued_render = false
-  var queued_data = []
-  
-  function renderer() {
-    queued_render = false
-    
-    pipeline.reduce(function(data, fun) {
-      return fun(data, context)
-    }, queued_data)
-    
-    queued_data = []
-  }
-  
-  return function(data) {
-    queued_data.push(data) 
-    if(queued_render) return false
+// canvas manipulation pipetypes
 
-    queued_render = true
-    window.requestAnimationFrame(renderer)
-    // setTimeout(renderer, 100)
-  }
-}
+UV.add_pipetype('shift-columns', {
+  batch: 
+    function(data, state, context) {
+      UV.helpers.shift(-1 * (data||[]).length, context)
+      return data }})
+
+UV.add_pipetype('draw-columns', {
+  batch: 
+    function(data, state, context) {
+      var len = data.length
+      data.forEach(function(arr, ind) {
+        UV.helpers.draw_column(arr, len-ind, context)})
+      return data }})
+
+// other pipetypes
+
+UV.add_pipetype('flatten', {
+  single: 
+    function(data) {
+      return flatten(data) }})
+
+UV.add_pipetype('colorize', {
+  batch: UV.identity })
+
+UV.add_pipetype('valuation', {
+  single: 
+    function(data) {
+      var level = 0
+      return data.reduce(function(acc, item) {
+        if(+item == item) {
+          var hue = stupidGlobalHueFun(item, level)
+          var sat = stupidGlobalSatFun(item, level)
+          var lit = stupidGlobalLitFun(item, level)
+          acc.push([hue, sat, lit])
+          return acc }
+      
+        if(item == 'down') level--
+        if(item == 'up')   level++
+        if(stupidGlobalBlackLines)
+          acc.push([1, 1, 1])
+        return acc }, [] ) }})
 
 
-//////
+
+/// other helpers
 
 function flatten(data) {
-  if(!data && data !== 0)
-    return NaN
+  if(!data && data !== 0)     return NaN
   
-  if(Array.isArray(data))
-    return flatten_array(data)
+  if(Array.isArray(data))     return flatten_array(data)
   
-  if(typeof data == 'object') 
-    return flatten_object(data)
+  if(typeof data == 'object') return flatten_object(data)
 
-  if(typeof data != 'number')
-    return NaN
+  if(typeof data != 'number') return NaN
     
   return data
 }
 
-function flatten_array(arr) {
-  return ['down'].concat(arr.reduce(function(acc, item) {return acc.concat(flatten(item))}, []).filter(NoNaN), 'up')
-  // return arr.map(flatten).filter(NoNaN)
-}
+function flatten_array(arr)
+  { return ['down'].concat
+    ( arr
+      . reduce
+        ( function(acc, item) 
+          { return acc.concat
+            ( flatten(item) )}
+        , [])
+      . filter(NoNaN)
+    , 'up') }
 
-function flatten_object(obj) {
-  return ['down'].concat(Object.keys(obj).reduce(function(acc, key) {return acc.concat(flatten(obj[key]))}, []), 'up')
-}
+function flatten_object(obj)
+  { return ['down'].concat
+    ( Object.keys(obj).reduce
+      ( function(acc, key) 
+        { return acc.concat
+          ( flatten(obj[key]))}, [])
+    , 'up') }
 
 function NoNaN(x) {
   return x === x // o ___ o
 }
 
-var stupidGlobalBlackLines = false
 
-var stupidGlobalSatConstant =  0
-var stupidGlobalLitConstant = 20
-var stupidGlobalSpdConstant = 30
-
-var stupidGlobalHueFun = function(item, level) { return item }
-var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupidGlobalSatConstant, 0) }
-var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupidGlobalLitConstant, 0) }
-
-
-setSat = function(x) {stupidGlobalSatConstant = x}
-setLit = function(x) {stupidGlobalLitConstant = x}
-setSpd = function(x) {stupidGlobalSpdConstant = x}
-
-toggleBlack = function() {stupidGlobalBlackLines = !stupidGlobalBlackLines}
-showBlack = function() {stupidGlobalBlackLines = true}
-
-function valuation(list) {
-  return list.map(function(data) {
-    var level = 0
-    return data.reduce(function(acc, item) {
-      if(+item == item) {
-        var hue = stupidGlobalHueFun(item, level)
-        var sat = stupidGlobalSatFun(item, level)
-        var lit = stupidGlobalLitFun(item, level)
-        acc.push([hue, sat, lit]) // oh no not like that!
-        return acc
-      }
-      
-      if(item == 'down') level--
-      if(item == 'up')   level++
-      if(stupidGlobalBlackLines)
-        acc.push([1, 1, 1])
-      return acc
-    }, [])
-  })
-}
-
-function colorize(data) {
-  return data
-}
-
-
-/// make it go. or stop. whatever.
-
-going = false /// what are you serious? nononono. eradicate this.
-
-function stop() {going = false}
-
-var goer = function(fun) {
-  going = true; 
-  function really_go() {
-    fun() 
-    if(going) {
-      if(+stupidGlobalSpdConstant)
-        setTimeout(really_go, +stupidGlobalSpdConstant)
-      else
-        setImmediate(really_go)
-    }
-  }
-  really_go()
-  // ~(function really_go() {fun(step()); if(going) {setImmediate(really_go)}})()
-}
-
-function flatten_each(data) {return data.map(flatten)}
-
-
-
-// helpers
 
 function rand(n) { return Math.floor(Math.random() * (n||256)) }
 
@@ -206,80 +305,41 @@ function partial(fun) {
 }
 
 ~function() {
-    //// postpone until next tick
-    // inspired by http://dbaron.org/log/20100309-faster-timeouts
-    var later = []
-    var messageName = 12345
-    var gimme_a_tick = true
+  //// postpone until next tick
+  // inspired by http://dbaron.org/log/20100309-faster-timeouts
+  var later = []
+  var messageName = 12345
+  var gimme_a_tick = true
 
-    function setImmediate(fun) {
-        later.push(fun)
+  function setImmediate(fun) {
+    later.push(fun)
     
-        if(gimme_a_tick) {
-            gimme_a_tick = false
-            window.postMessage(messageName, "*")
-        }
+    if(gimme_a_tick) {
+      gimme_a_tick = false
+      window.postMessage(messageName, "*")
+    }
     
-        return false
-    }
-
-    function handleMessage(event) {
-        if(event.data != messageName) return false
-
-        event.stopPropagation()
-        gimme_a_tick = true
-
-        var now = later
-        later = []
-
-        for(var i=0, l=now.length; i < l; i++)
-            now[i]()
-    }
-
-    if(typeof window != 'undefined') {
-        window.addEventListener('message', handleMessage, true)
-        window.setImmediate = setImmediate
-    }
-}()
-
-
-
-/*
-  dead code
-
-  function draw_color(context, color) {
-    context = context || ctx
-    color = color || Math.floor( Math.random() * 360 )
-  
-    var w = context.canvas.width
-    var h = context.canvas.height
-    var c = "hsl(" + color + ", 60%, 60%)"
-  
-    ctx.fillStyle = c
-    ctx.fillRect(w-1, 0, 1, h);
-  }
-  
-  function draw_cols(context, data, offset) {
-    data = data || ds
-  
-    var w = context.canvas.width
-    var h = context.canvas.height
-  
-    // var list = flatten(data)
-    data.forEach(function(item, index) {        
-      var c = "hsl(" + item + ", 60%, 60%)"
-      if(item == -1)
-        c = "hsl(0, 0%, 0%)"
-      context.fillStyle = c
-      context.fillRect(w-1-offset, index, 1, 1);
-    })
-  
     return false
   }
 
-  
+  function handleMessage(event) {
+    if(event.data != messageName) return false
 
-*/
+    event.stopPropagation()
+    gimme_a_tick = true
+
+    var now = later
+    later = []
+
+    for(var i=0, l=now.length; i < l; i++)
+      now[i]()
+  }
+
+  if(typeof window != 'undefined') {
+    window.addEventListener('message', handleMessage, true)
+    window.setImmediate = setImmediate
+  }
+}()
 
 
 /*
