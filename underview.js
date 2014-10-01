@@ -15,7 +15,6 @@ Example:
     var pipeline = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
     var renderer = UV.build_renderer(pipeline, ctx)
     
-    var foo = [1,2,3]
     UV.add_stepper('simple_example',
       { init: function() { return [1,2,3] }
       , step: function(data) { return data.concat( rand() ) } } )
@@ -39,9 +38,9 @@ TODOS:
 
 UV = {}                                                       // our namespace
 
-UV.pipetypes  = {}                                            // for the rendering pipeline
-UV.steppers = {}                                              // the data structure bits
-UV.helpers  = {}                                              // mostly canvas wrappers
+UV.pipetypes = {}                                             // for the rendering pipeline
+UV.steppers  = {}                                             // the data structure bits
+UV.helpers   = {}                                             // mostly canvas wrappers
 
 UV.add_pipetype = function(name, pipetype) {
   if(typeof pipetype != 'object') 
@@ -82,8 +81,18 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
   var queued_render = false
   var queued_data = []
   var pipeline_state = []
+  var state_map = {}
   
   // TODO: errors for bad pipeline and context
+  
+  pipeline.forEach(function(pipe, index) {
+    pipeline_state[index] = {}                                // set default state
+    if(typeof pipe != 'string') return false
+    
+    var pipetype = UV.pipetypes[pipe]
+    pipeline_state[index] = pipetype.state || {}              // pipetype-specific default state
+    state_map[pipe] = index                                   // map from pipetype name to index
+  })                                                          // THINK: duplicate pipes with state get borked...
   
   pipeline = pipeline.map(function(pipe) {                    // transform into composable functions
     if(typeof pipe == 'function')
@@ -94,16 +103,15 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
     if(typeof (pipe||{}).batch == 'function')
       return pipe.batch
     if(typeof (pipe||{}).single == 'function')
-      return function(pallet) {return pallet.map(pipe.single)}
+      return function(pallet, s, c) {
+        return pallet.map(
+          function(item) {
+            return pipe.single(item, s, c)})}
     
     return UV.onError('Invalid pipe in pipeline') || UV.identity 
   })
   
-  pipeline.forEach(function(pipe, index) {                    // capture state
-    pipeline_state[index] = {} 
-  })
-  
-  function renderer() {
+  var really_draw = function() {
     queued_render = false
     
     pipeline.reduce(function(data, fun, index) {
@@ -118,37 +126,43 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
     queued_data = []
   }
   
-  // maybe return {render: fun, set_state: fun} ?
-  
-  return function(data) {
+  var draw = function(data) {
     queued_data.push(data) 
     if(queued_render) return false
 
     queued_render = true
-    window.requestAnimationFrame(renderer)                    // THINK: we could parametrize rAF
+    window.requestAnimationFrame(really_draw)                 // THINK: we could parametrize rAF
   }
+  
+  var set_state = function(pipetype, key, value) {
+    var index = typeof pipetype == 'string' ? state_map[pipetype] : pipetype
+    if(!index && index !== 0)
+      return UV.onError('Pipetype not present')
+
+    var state = pipeline_state[index]
+    if(typeof state != 'object')
+      return UV.onError('That state is invalid')
+    
+    state[key] = value                                        // mutation via pointer
+  }
+  
+  var get_state = function(pipetype, key) {
+    var index = typeof pipetype == 'string' ? state_map[pipetype] : pipetype
+    if(!index && index !== 0)
+      return UV.onError('Pipetype not present')
+
+    var state = pipeline_state[index]
+    if(typeof state != 'object')
+      return UV.onError('That state is invalid')
+    
+    return state[key]
+  }
+  
+  return { draw: draw
+         , get: get_state
+         , set: set_state
+         }
 }
-
-
-
-
-var stupidGlobalBlackLines = false
-
-var stupidGlobalSatConstant =  0
-var stupidGlobalLitConstant = 20
-var stupidGlobalSpdConstant = 30
-
-var stupidGlobalHueFun = function(item, level) { return item }
-var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupidGlobalSatConstant, 0) }
-var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupidGlobalLitConstant, 0) }
-
-setSat = function(x) {stupidGlobalSatConstant = x}
-setLit = function(x) {stupidGlobalLitConstant = x}
-// setSpd = function(x) {stupidGlobalSpdConstant = x}
-
-toggleBlack = function() {stupidGlobalBlackLines = !stupidGlobalBlackLines}
-showBlack = function() {stupidGlobalBlackLines = true}
-
 
 
 /// a scheduler for scheduling things
@@ -347,19 +361,25 @@ UV.add_pipetype('colorize', {
   batch: UV.identity })
 
 UV.add_pipetype('valuation', {
+  state: { black: false
+         , sat: 0
+         , lit: 20
+         , satfun: function(item, level, sat) { return Math.max(100+level*sat, 0) }
+         , litfun: function(item, level, lit) { return Math.max(100+level*lit, 0) }
+         } ,
   single: 
-    function(data) {
+    function(data, state) {
       var level = 0
       return data.reduce(function(acc, item) {
         if(+item == item) {
-          var hue = stupidGlobalHueFun(item, level)
-          var sat = stupidGlobalSatFun(item, level)
-          var lit = stupidGlobalLitFun(item, level)
+          var hue = item
+          var sat = state.satfun(item, level, state.sat)
+          var lit = state.litfun(item, level, state.lit)
           acc.push([hue, sat, lit])
           return acc }
       
         if(item == 'down') level--
         if(item == 'up')   level++
-        if(stupidGlobalBlackLines)
+        if(state.black)
           acc.push([1, 1, 1])
         return acc }, [] ) }})
