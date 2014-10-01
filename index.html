@@ -5,12 +5,6 @@
   <script src="mori.js"></script>
   <script src="Immutable.min.js"></script>
   <script src="underview.js"></script>
-  <style type="text/css">
-/*    #canvas {
-      height: 400px;
-      width: 400px;
-    }
-*/  </style> 
 </head>
 <body>
 
@@ -27,12 +21,12 @@
     </div>
     
     <p><button id="queue_mori">Mori Queue</button></p>
-    <p><button id="map_mori_r">Mori Map random</button></p>
-    <p><button id="map_mori_s">Mori Map sequential</button></p>
+    <p><button id="map_mori_random">Mori Map random</button></p>
+    <p><button id="map_mori_sequential">Mori Map sequential</button></p>
 
     <p><button id="vector_fb">FB Vector queue</button></p>
-    <p><button id="map_fb_r">FB Map random</button></p>
-    <p><button id="map_fb_s">FB Map sequential</button></p>
+    <p><button id="map_fb_random">FB Map random</button></p>
+    <p><button id="map_fb_sequential">FB Map sequential</button></p>
     
     <hr />
     
@@ -55,26 +49,8 @@
     // var init = function() {for(i=0; i<100; i++) { ds.push(rand()) }}
     //
     // init()
-    
-    ////// 
-        
-    
-
-    
-    
-    /// steppers and goers
-
-    // UV.add_stepper('vector_mori',
-    //   { init: function() { return mori.vector() }
-    //   , step: function(data) {
-    //             if(mori.count(data) < 200 || rand(3))
-    //               data = mori.conj(data, rand())
-    //             else
-    //               data = mori.pop(data)
-    //             return data } } )
     //
     // function simple_step() { ds.push(rand()); ds.shift(); return ds.slice() }
-    //
     //
     // function tricky_step() {
     //   if(rand(1.5)) {
@@ -93,12 +69,15 @@
     //   return ds.slice()
     // }
     
+
     
-    /// mori vector
+    
+    /// steppers and goers
+        
     // TODO: pixel compression (4-to-1 would show the 1024 transition)
-    // THINK: do something more interesting with this
     
     UV.add_stepper('vector_mori',
+      // THINK: do something more interesting with this
       { init: function() { return mori.vector() }
       , step: function(data) {
                 if(mori.count(data) < 200 || rand(3))
@@ -107,18 +86,6 @@
                   data = mori.pop(data)
                 return data } } )
     
-    // var vector_mori = mori.vector()
-    //
-    // function vector_mori_step() {
-    //   if(mori.count(vector_mori) < 200 || rand(3))
-    //     vector_mori = mori.conj(vector_mori, rand())
-    //   else
-    //     vector_mori = mori.pop(vector_mori)
-    //   return vector_mori
-    // }
-    
-    /// mori queue
-
     UV.add_stepper('queue_mori',
       { init: function() { return mori.queue() }
       , step: function(data) {
@@ -126,53 +93,22 @@
                 if(mori.count(data) > 200)
                   data = mori.pop(data)
                 return data } } )
-
-    // var queue_mori = mori.queue()
-    //
-    // function queue_mori_step() {
-    //   queue_mori = mori.conj(queue_mori, rand())
-    //   if(mori.count(queue_mori) > 200)
-    //     queue_mori = mori.pop(queue_mori)
-    //   return queue_mori
-    // }
     
-    /// mori map random
-
-    UV.add_stepper('map_mori_r',
+    UV.add_stepper('map_mori_random',
       { init: function() { return mori.hash_map() }
       , step: function(data) {
                 var n = rand(350) + 1
                 data = mori.assoc(data, 'a'+n, n)
                 return data } } )
-
-    // var map_mori_r = mori.hash_map()
-    //
-    // function map_mori_r_step() {
-    //   var n = rand(350)
-    //   map_mori_r = mori.assoc(map_mori_r, 'a'+n, n)
-    //   return map_mori_r
-    // }
     
-    /// mori map sequential
-
-    UV.add_stepper('map_mori_s',
+    UV.add_stepper('map_mori_sequential',
       { init: function() { return mori.hash_map() }
       , step: function(data) {
                 var n = mori.count(data) + 1
                 data = mori.assoc(data, 'a'+n, n)
                 return data } } )
-
-    // var map_mori_s = mori.hash_map(), map_mori_s_n = 0
-    //
-    // function map_mori_s_step() {
-    //   n = ++map_mori_s_n
-    //   map_mori_s = mori.assoc(map_mori_s, 'a'+n, n)
-    //   return map_mori_s
-    // }
     
-    
-    /// fb vector queue
-    
+        
     UV.add_stepper('vector_fb',
       { init: function() { return Immutable.Vector() }
       , step: function(data) {
@@ -181,50 +117,20 @@
                   data = data.shift()
                 return data } } )
     
-    // var vector_fb = Immutable.Vector()
-    //
-    // function vector_fb_step() {
-    //   vector_fb = vector_fb.push(rand())
-    //   if(vector_fb.length > 360)
-    //     vector_fb = vector_fb.shift()
-    //   return vector_fb
-    // }
-    
-    
-    /// fb map random
-    
-    UV.add_stepper('map_fb_r',
+    UV.add_stepper('map_fb_random',
       { init: function() { return Immutable.Map() }
       , step: function(data) {
                 var n = rand(350) + 1
                 data = data.set('a'+n, n)
                 return data } } )
 
-    // var map_fb_r = Immutable.Map()
-    //
-    // function map_fb_r_step() {
-    //   var n = rand(350)
-    //   map_fb_r = map_fb_r.set('a'+n, n) // TODO: do this sans global
-    //   return map_fb_r
-    // }
-    
-    /// fb map sequential
-
-    UV.add_stepper('map_fb_s',
+    UV.add_stepper('map_fb_sequential',
       { init: function() { return Immutable.Map() }
       , step: function(data) {
                 var n = data.length + 1
                 data = data.set('a'+n, n)
                 return data } } )
-    
-    // var map_fb_s = Immutable.Map(), map_fb_s_n = 0
-    //
-    // function map_fb_s_step() {
-    //   n = ++map_fb_s_n
-    //   map_fb_s = map_fb_s.set('a'+n, n) // TODO: do this sans global
-    //   return map_fb_s
-    // }
-    
+                
     
     // go fun and dom bindings
 
@@ -237,31 +143,13 @@
     function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
 
     function makego(stepper_name) {
-      // use underview's scheduler
-      
       var stepper = UV.steppers[stepper_name]
-      // return partial(scheduler, stepper)
-
-      // var gobase = function(stepfun) { renderer( stepfun() ) }
-      // return partial(scheduler, partial(gobase, stepper))
       return partial(scheduler, renderer, stepper)
     }
-
-    // clickit('simple', makego(simple_step))
-    // clickit('tricky', makego(tricky_step))
     
     Object.keys(UV.steppers).forEach(function(key) {
       clickit(key, makego(key))
     })
-    
-    // clickit('vector_mori', makego(vector_mori_step))
-    // clickit('queue_mori',  makego(queue_mori_step))
-    // clickit('map_mori_r',  makego(map_mori_r_step))
-    // clickit('map_mori_s',  makego(map_mori_s_step))
-
-    // clickit('vector_fb', makego(vector_fb_step))
-    // clickit('map_fb_r',  makego(map_fb_r_step))
-    // clickit('map_fb_s',  makego(map_fb_s_step))
     
     
     // other controls
@@ -274,12 +162,6 @@
     changeit('sat_value', function(elem) { setSat(elem.target.value) })
     changeit('lit_value', function(elem) { setLit(elem.target.value) })
     changeit('spd_value', function(elem) { setSpd(elem.target.value) })
-    
-    // clickit('poke_simple', function() {
-    //   for (var i = 0; i < 9; i++) {
-    //     ds[5+i*10] = 300
-    //   }
-    // })
     
   </script>
   

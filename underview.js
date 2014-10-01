@@ -16,11 +16,11 @@ TODOS:
 
 */
 
-UV = {}                                                     // our namespace
+UV = {}                                                       // our namespace
 
-UV.pipetypes  = {}                                          // for the rendering pipeline
-UV.steppers = {}                                            // the data structure bits
-UV.helpers  = {}                                            // mostly canvas wrappers
+UV.pipetypes  = {}                                            // for the rendering pipeline
+UV.steppers = {}                                              // the data structure bits
+UV.helpers  = {}                                              // mostly canvas wrappers
 
 UV.add_pipetype = function(name, pipetype) {
   if(typeof pipetype != 'object') 
@@ -37,17 +37,17 @@ UV.add_pipetype = function(name, pipetype) {
   return true
 }
 
-UV.add_stepper = function(name, stepper) {                   // a particular data structure progression
+UV.add_stepper = function(name, stepper) {                    // a particular data structure progression
   if(typeof stepper != 'object') 
     return UV.onError('Invalid stepper')
 
   if(UV.steppers[name]) 
     return UV.onError('A stepper with that name already exists')
 
-  if(typeof stepper.step != 'function')                      // step: DS -> DS
+  if(typeof stepper.step != 'function')                       // step: DS -> DS
     return UV.onError('A stepper must have a step function')
 
-  if(typeof stepper.init != 'function')                      // generate initial DS
+  if(typeof stepper.init != 'function')                       // generate initial DS
     stepper.init = UV.noop
 
   stepper.data = stepper.init()
@@ -55,15 +55,16 @@ UV.add_stepper = function(name, stepper) {                   // a particular dat
   return true
 }
 
-UV.build_renderer = function(pipeline, context) {           // pipeline is a list of pipetype names or funs
-                                                            // context is a canvas context
+
+UV.build_renderer = function(pipeline, context) {             // pipeline is a list of pipetype names or funs
+                                                              // context is a canvas context
   var queued_render = false
   var queued_data = []
   var pipeline_state = []
   
   // TODO: errors for bad pipeline and context
   
-  pipeline = pipeline.map(function(pipe) {                  // transform into composable functions
+  pipeline = pipeline.map(function(pipe) {                    // transform into composable functions
     if(typeof pipe == 'function')
       return pipe
     if(typeof pipe == 'string')
@@ -77,7 +78,7 @@ UV.build_renderer = function(pipeline, context) {           // pipeline is a lis
     return UV.onError('Invalid pipe in pipeline') || UV.identity 
   })
   
-  pipeline.forEach(function(pipe, index) {                  // capture state
+  pipeline.forEach(function(pipe, index) {                    // capture state
     pipeline_state[index] = {} 
   })
   
@@ -87,7 +88,7 @@ UV.build_renderer = function(pipeline, context) {           // pipeline is a lis
     pipeline.reduce(function(data, fun, index) {
       var output = fun(data, pipeline_state[index], context)
       
-      if(Array.isArray(output)) return output                // output array means no state
+      if(Array.isArray(output)) return output                 // output array means no state
       
       pipeline_state[index] = output.state
       return output.data
@@ -101,112 +102,9 @@ UV.build_renderer = function(pipeline, context) {           // pipeline is a lis
     if(queued_render) return false
 
     queued_render = true
-    window.requestAnimationFrame(renderer)                   // THINK: could parametrize rAF
+    window.requestAnimationFrame(renderer)                    // THINK: could parametrize rAF
   }
 }
-
-
-
-//////
-// I apologize for what you're about to see
-//////
-
-var stupidGlobalBlackLines = false
-
-var stupidGlobalSatConstant =  0
-var stupidGlobalLitConstant = 20
-var stupidGlobalSpdConstant = 30
-
-var stupidGlobalHueFun = function(item, level) { return item }
-var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupidGlobalSatConstant, 0) }
-var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupidGlobalLitConstant, 0) }
-
-setSat = function(x) {stupidGlobalSatConstant = x}
-setLit = function(x) {stupidGlobalLitConstant = x}
-setSpd = function(x) {stupidGlobalSpdConstant = x}
-
-toggleBlack = function() {stupidGlobalBlackLines = !stupidGlobalBlackLines}
-showBlack = function() {stupidGlobalBlackLines = true}
-
-
-going = false
-
-function stop() {going = false}
-
-var scheduler = function(renderer, stepper) {
-  going = true;
-  function schedule() {
-    var result = stepper.step(stepper.data) 
-    stepper.data = result
-    renderer(result)
-    
-    if(going) {
-      if(+stupidGlobalSpdConstant)
-        setTimeout(schedule, +stupidGlobalSpdConstant)
-      else
-        setImmediate(schedule)
-    }
-  }
-  schedule()
-  // ~(function really_go() {fun(step()); if(going) {setImmediate(really_go)}})()
-}
-
-// UV.get_stepfun = function(name) {
-//   return UV.steppers[name]
-//   // return function(stepfun) { renderer( stepfun() ) }
-// }
-
-
-
-// function flatten_each(data) {return data.map(flatten)}
-
-
-
-
-
-/// UV helper functions
-
-UV.noop = function() {}
-
-UV.identity = function(x) {return x}
-
-UV.onError = function(err) {                                 // replace this to suit your needs
-  console.error(err)
-}
-
-UV.helpers.shift = function(dx, context) {                   // effectfully affects the canvas
-  dx = dx || -1
-  
-  var w = context.canvas.width
-  var h = context.canvas.height
-  var imageData = context.getImageData(0, 0, w, h);
-  
-  context.clearRect(0, 0, w, h);
-  context.putImageData(imageData, dx, 0);
-}
-
-UV.helpers.draw_column = function(data, offset, context) {   // effectfully affects the canvas
-  data = data || ds
-  
-  var w = context.canvas.width
-  var h = context.canvas.height
-  
-  data.forEach(function(item, index) {
-    var hue = item[0] ?    item[0]     : item
-    var sat = item[1] ? ''+item[1]+'%' : '60%'
-    var lit = item[2] ? ''+item[2]+'%' : '60%'
-    
-    var c = 'hsl(' + hue + ', ' + sat + ', ' + lit + ')'
-    
-    if(item == -1)
-      c = 'hsl(0, 0%, 0%)'
-      
-    context.fillStyle = c
-    context.fillRect(w-1-offset, index, 1, 1);
-  })
-}
-
-
 
 
 // canvas manipulation pipetypes
@@ -254,8 +152,94 @@ UV.add_pipetype('valuation', {
         return acc }, [] ) }})
 
 
+/// a scheduler for scheduling things
 
-/// other helpers
+var stupidGlobalBlackLines = false
+
+var stupidGlobalSatConstant =  0
+var stupidGlobalLitConstant = 20
+var stupidGlobalSpdConstant = 30
+
+var stupidGlobalHueFun = function(item, level) { return item }
+var stupidGlobalSatFun = function(item, level) { return Math.max(100+level*stupidGlobalSatConstant, 0) }
+var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupidGlobalLitConstant, 0) }
+
+setSat = function(x) {stupidGlobalSatConstant = x}
+setLit = function(x) {stupidGlobalLitConstant = x}
+setSpd = function(x) {stupidGlobalSpdConstant = x}
+
+toggleBlack = function() {stupidGlobalBlackLines = !stupidGlobalBlackLines}
+showBlack = function() {stupidGlobalBlackLines = true}
+
+
+going = false
+
+function stop() {going = false}
+
+var scheduler = function(renderer, stepper) {
+  going = true;
+  function schedule() {
+    var result = stepper.step(stepper.data) 
+    stepper.data = result
+    renderer(result)
+    
+    if(going) {
+      if(+stupidGlobalSpdConstant)
+        setTimeout(schedule, +stupidGlobalSpdConstant)
+      else
+        setImmediate(schedule)
+    }
+  }
+  schedule()
+}
+
+
+
+/// UV helper functions
+
+UV.noop = function() {}
+
+UV.identity = function(x) {return x}
+
+UV.onError = function(err) {                                  // replace this to suit your needs
+  console.error(err)
+}
+
+UV.helpers.shift = function(dx, context) {                    // effectfully affects the canvas
+  dx = dx || -1
+
+  var w = context.canvas.width
+  var h = context.canvas.height
+  var imageData = context.getImageData(0, 0, w, h);
+
+  context.clearRect(0, 0, w, h);
+  context.putImageData(imageData, dx, 0);
+}
+
+UV.helpers.draw_column = function(data, offset, context) {    // effectfully affects the canvas
+  data = data || ds
+
+  var w = context.canvas.width
+  var h = context.canvas.height
+
+  data.forEach(function(item, index) {
+    var hue = item[0] ?    item[0]     : item
+    var sat = item[1] ? ''+item[1]+'%' : '60%'
+    var lit = item[2] ? ''+item[2]+'%' : '60%'
+
+    var c = 'hsl(' + hue + ', ' + sat + ', ' + lit + ')'
+
+    if(item == -1)
+      c = 'hsl(0, 0%, 0%)'
+
+    context.fillStyle = c
+    context.fillRect(w-1-offset, index, 1, 1);
+  })
+}
+
+
+
+/// general helpers -- these are injected into the global scope
 
 function flatten(data) {
   if(!data && data !== 0)     return NaN
@@ -288,11 +272,7 @@ function flatten_object(obj)
           ( flatten(obj[key]))}, [])
     , 'up') }
 
-function NoNaN(x) {
-  return x === x // o ___ o
-}
-
-
+function NoNaN(x) { return x === x /* o ___ o */ }
 
 function rand(n) { return Math.floor(Math.random() * (n||256)) }
 
