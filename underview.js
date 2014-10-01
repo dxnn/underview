@@ -29,9 +29,6 @@ Example:
 TODOS:
   - allow multiple concurrent renderers
   - per-instantiation vars for lit sat etc -- or... general getters/setters for pipetypes? maybe.
-  - pipetypes like flatten, valuation, colorize
-  - steppers like map_mori_r which have: init, step, ... maybe that's all?
-  - how do we do diffs? tree graphs? etc?
   - flatten trees multiple ways
   - color by value, diff, change, locality, etc
   - pixel compression (4-to-1 would show the 1024 transition)
@@ -121,17 +118,19 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
     queued_data = []
   }
   
+  // maybe return {render: fun, set_state: fun} ?
+  
   return function(data) {
     queued_data.push(data) 
     if(queued_render) return false
 
     queued_render = true
-    window.requestAnimationFrame(renderer)                    // THINK: could parametrize rAF
+    window.requestAnimationFrame(renderer)                    // THINK: we could parametrize rAF
   }
 }
 
 
-/// a scheduler for scheduling things
+
 
 var stupidGlobalBlackLines = false
 
@@ -145,33 +144,51 @@ var stupidGlobalLitFun = function(item, level) { return Math.max(100+level*stupi
 
 setSat = function(x) {stupidGlobalSatConstant = x}
 setLit = function(x) {stupidGlobalLitConstant = x}
-setSpd = function(x) {stupidGlobalSpdConstant = x}
+// setSpd = function(x) {stupidGlobalSpdConstant = x}
 
 toggleBlack = function() {stupidGlobalBlackLines = !stupidGlobalBlackLines}
 showBlack = function() {stupidGlobalBlackLines = true}
 
 
-going = false
 
-function stop() {going = false}
+/// a scheduler for scheduling things
 
-var scheduler = function(renderer, stepper) {
-  going = true;
-  function schedule() {
+UV.build_scheduler = function(renderer) {
+  var going = false
+  var speed = 30
+  var stepper
+  
+  var step = function() {
     var result = stepper.step(stepper.data) 
     stepper.data = result
     renderer(result)
     
-    if(going) {
-      if(+stupidGlobalSpdConstant)
-        setTimeout(schedule, +stupidGlobalSpdConstant)
-      else
-        setImmediate(schedule)
-    }
-  }
-  schedule()
-}
+    if(!going) return false
 
+    if(speed)
+      setTimeout(step, speed)
+    else
+      setImmediate(step)
+  }
+  
+  var go = function(new_stepper) {
+    stepper = new_stepper
+
+    if(going) return false
+    
+    going = true
+    step() 
+  }
+
+  var  stop = function( ) { going = false   }
+  var speed = function(n) { speed = +n || 0 }
+  
+  return { go: go
+         , stop: stop
+         , step: step
+         , speed: speed 
+         }
+}
 
 
 /// UV helper functions
@@ -320,8 +337,6 @@ UV.add_pipetype('draw-columns', {
       data.forEach(function(arr, ind) {
         UV.helpers.draw_column(arr, len-ind, context)})
       return data }})
-
-// other pipetypes
 
 UV.add_pipetype('flatten', {
   single: 

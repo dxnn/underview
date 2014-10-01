@@ -138,12 +138,13 @@
     
     var pipeline = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
     var renderer = UV.build_renderer(pipeline, ctx)
+    var scheduler = UV.build_scheduler(renderer)
 
     function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
 
     function makego(stepper_name) {
       var stepper = UV.steppers[stepper_name]
-      return partial(scheduler, renderer, stepper)
+      return partial(scheduler.go, stepper)
     }
     
     Object.keys(UV.steppers).forEach(function(key) {
@@ -153,14 +154,14 @@
     
     // other controls
     
-    clickit('stop', stop)
+    clickit('stop', scheduler.stop)
     clickit('toggle_black', function() { stupidGlobalBlackLines = !stupidGlobalBlackLines })
     
     function changeit(elstr, fun) { el(elstr).addEventListener('change', function(x) { fun(x) }) }
     
     changeit('sat_value', function(elem) { setSat(elem.target.value) })
     changeit('lit_value', function(elem) { setLit(elem.target.value) })
-    changeit('spd_value', function(elem) { setSpd(elem.target.value) })
+    changeit('spd_value', function(elem) { scheduler.speed(elem.target.value) })
     
   </script>
   
