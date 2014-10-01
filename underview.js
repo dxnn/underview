@@ -7,14 +7,38 @@
                                                                                                  
 A different perspective on your data
 
+
+Example:
+
+    var ctx = document.getElementById('canvas').getContext('2d') // get an html canvas element
+    
+    var pipeline = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
+    var renderer = UV.build_renderer(pipeline, ctx)
+    
+    var foo = [1,2,3]
+    UV.add_stepper('simple_example',
+      { init: function() { return [1,2,3] }
+      , step: function(data) { return data.concat( rand() ) } } )
+    
+    UV.scheduler(renderer, 'simple_example')
+    
+*/
+
+/*
+
 TODOS:
-- allow multiple concurrent renderers
-- per-instantiation vars for lit sat etc -- or... general getters/setters for pipetypes? maybe.
-- pipetypes like flatten, valuation, colorize
-- steppers like map_mori_r which have: init, step, ... maybe that's all?
-- how do we do diffs? tree graphs? etc?
+  - allow multiple concurrent renderers
+  - per-instantiation vars for lit sat etc -- or... general getters/setters for pipetypes? maybe.
+  - pipetypes like flatten, valuation, colorize
+  - steppers like map_mori_r which have: init, step, ... maybe that's all?
+  - how do we do diffs? tree graphs? etc?
+  - flatten trees multiple ways
+  - color by value, diff, change, locality, etc
+  - pixel compression (4-to-1 would show the 1024 transition)
+  - binary tree -- change saturation so you can see unbalanced tree easily
 
 */
+
 
 UV = {}                                                       // our namespace
 
@@ -107,51 +131,6 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
 }
 
 
-// canvas manipulation pipetypes
-
-UV.add_pipetype('shift-columns', {
-  batch: 
-    function(data, state, context) {
-      UV.helpers.shift(-1 * (data||[]).length, context)
-      return data }})
-
-UV.add_pipetype('draw-columns', {
-  batch: 
-    function(data, state, context) {
-      var len = data.length
-      data.forEach(function(arr, ind) {
-        UV.helpers.draw_column(arr, len-ind, context)})
-      return data }})
-
-// other pipetypes
-
-UV.add_pipetype('flatten', {
-  single: 
-    function(data) {
-      return flatten(data) }})
-
-UV.add_pipetype('colorize', {
-  batch: UV.identity })
-
-UV.add_pipetype('valuation', {
-  single: 
-    function(data) {
-      var level = 0
-      return data.reduce(function(acc, item) {
-        if(+item == item) {
-          var hue = stupidGlobalHueFun(item, level)
-          var sat = stupidGlobalSatFun(item, level)
-          var lit = stupidGlobalLitFun(item, level)
-          acc.push([hue, sat, lit])
-          return acc }
-      
-        if(item == 'down') level--
-        if(item == 'up')   level++
-        if(stupidGlobalBlackLines)
-          acc.push([1, 1, 1])
-        return acc }, [] ) }})
-
-
 /// a scheduler for scheduling things
 
 var stupidGlobalBlackLines = false
@@ -238,7 +217,6 @@ UV.helpers.draw_column = function(data, offset, context) {    // effectfully aff
 }
 
 
-
 /// general helpers -- these are injected into the global scope
 
 function flatten(data) {
@@ -322,29 +300,51 @@ function partial(fun) {
 }()
 
 
-/*
 
-ok. hi! today you're going to do this stuff:
-- observe the array and change the pixels based on it [copy + shift?]
-- flatten deeper trees (multiple ways)
-- color by value, diff, change, locality, etc
-- open omnigraffle to start fiddling with structure diagrams
-- build a simple animation thingy
-- slides & more slides on paper or something
-- notebook + paper + computer consolidation [where?]
+/**********
 
+  Wherein we add sundry handy pipetypes
 
-step -> (draw + shift)
-- draw takes an array of color data (either just h or hsl)
+**********/
 
-render -> doctor_data -> step
+UV.add_pipetype('shift-columns', {
+  batch: 
+    function(data, state, context) {
+      UV.helpers.shift(-1 * (data||[]).length, context)
+      return data }})
 
-what I really want is a thing with some stuff that does things.
+UV.add_pipetype('draw-columns', {
+  batch: 
+    function(data, state, context) {
+      var len = data.length
+      data.forEach(function(arr, ind) {
+        UV.helpers.draw_column(arr, len-ind, context)})
+      return data }})
 
-// try sequentially instead of adding randomly to the map
-// binary tree -- change saturation so you can see unbalanced tree easily
-// diff coloring so you can see hotspots
+// other pipetypes
 
-*/
+UV.add_pipetype('flatten', {
+  single: 
+    function(data) {
+      return flatten(data) }})
 
+UV.add_pipetype('colorize', {
+  batch: UV.identity })
 
+UV.add_pipetype('valuation', {
+  single: 
+    function(data) {
+      var level = 0
+      return data.reduce(function(acc, item) {
+        if(+item == item) {
+          var hue = stupidGlobalHueFun(item, level)
+          var sat = stupidGlobalSatFun(item, level)
+          var lit = stupidGlobalLitFun(item, level)
+          acc.push([hue, sat, lit])
+          return acc }
+      
+        if(item == 'down') level--
+        if(item == 'up')   level++
+        if(stupidGlobalBlackLines)
+          acc.push([1, 1, 1])
+        return acc }, [] ) }})
