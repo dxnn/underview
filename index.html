@@ -40,40 +40,8 @@
   </div>
 
   <script>
-
-    
-    ///// a data structure thing ok
-    
-    // ds = []
-    //
-    // var init = function() {for(i=0; i<100; i++) { ds.push(rand()) }}
-    //
-    // init()
-    //
-    // function simple_step() { ds.push(rand()); ds.shift(); return ds.slice() }
-    //
-    // function tricky_step() {
-    //   if(rand(1.5)) {
-    //     ds.push(rand());
-    //     ds.shift();
-    //   }
-    //   else if(rand(1.1)) {
-    //     ds[25] = 1
-    //     ds[26] = 1
-    //     ds[27] = 1
-    //   }
-    //   else if(rand(1.5)) {
-    //     ds[75] = 200
-    //     ds[76] = 200
-    //   }
-    //   return ds.slice()
-    // }
-    
-
-    
-    
+  
     /// steppers and goers
-        
     
     UV.add_stepper('vector_mori',
       // THINK: do something more interesting with this
@@ -136,8 +104,8 @@
     var el = document.getElementById.bind(document)
     var ctx = el('canvas').getContext('2d')
     
-    var pipeline = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
-    var renderer = UV.build_renderer(pipeline, ctx)
+    var pipeline  = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
+    var renderer  = UV.build_renderer(pipeline, ctx)
     var scheduler = UV.build_scheduler(renderer.draw)
 
     function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
@@ -150,7 +118,6 @@
     Object.keys(UV.steppers).forEach(function(key) {
       clickit(key, makego(key))
     })
-    
     
     // other controls
     

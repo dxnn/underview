@@ -8,27 +8,47 @@
 A different perspective on your data
 
 
-Example:
+Example using all the built-in goodies:
 
     var ctx = document.getElementById('canvas').getContext('2d') // get an html canvas element
     
-    var pipeline = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
-    var renderer = UV.build_renderer(pipeline, ctx)
+    var pipeline  = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
+    var renderer  = UV.build_renderer(pipeline, ctx)
+    var scheduler = UV.build_scheduler(renderer.draw)
     
     UV.add_stepper('simple_example',
       { init: function() { return [1,2,3] }
       , step: function(data) { return data.concat( rand() ) } } )
     
-    UV.scheduler(renderer, 'simple_example')
+    scheduler.go('simple_example')
     
+DIY Example:
+
+    var ctx = document.getElementById('canvas').getContext('2d') // get an html canvas element
+    
+    var draw = function(data, offset, ctx) {
+      data.forEach(function(val, index) {
+        ctx.fillStyle = 'hsl(' + index*2.6 + ', 100%, 80%)'
+        ctx.fillRect(rand(ctx.canvas.width), rand(ctx.canvas.height), val, val);
+      })
+    }
+
+    var pipeline = [flatten, draw]
+    var renderer  = UV.build_renderer(pipeline, ctx)
+
+    var x = [1,2,3,4,5,6]
+    Array.observe(x, function() {renderer.draw(x)})
+
+    var go = function(fun) {fun(); setTimeout(function() {go(fun)}, 200)}
+    go(function() {x.push(rand(x.length)+1)})
+
 */
+ 
 
 /*
 
 TODOS:
-  - allow multiple concurrent renderers
-  - per-instantiation vars for lit sat etc -- or... general getters/setters for pipetypes? maybe.
-  - flatten trees multiple ways
+  - different flattening techniques (e.g. middle-out)
   - color by value, diff, change, locality, etc
   - pixel compression (4-to-1 would show the 1024 transition)
   - binary tree -- change saturation so you can see unbalanced tree easily
@@ -75,13 +95,22 @@ UV.add_stepper = function(name, stepper) {                    // a particular da
   return true
 }
 
+UV.get_stepper = function(name) {
+  
+}
+
 
 UV.build_renderer = function(pipeline, context) {             // pipeline is a list of pipetype names or funs
                                                               // context is a canvas context
-  var queued_render = false
+  var state_map = {}
   var queued_data = []
   var pipeline_state = []
-  var state_map = {}
+  var queued_render = false  
+  var batchize = function(fun) 
+    { return function(pallet, s, c) 
+      { return pallet.map
+        ( function(item) 
+          { return fun(item, s, c) } ) } }
   
   // TODO: errors for bad pipeline and context
   
@@ -96,17 +125,14 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
   
   pipeline = pipeline.map(function(pipe) {                    // transform into composable functions
     if(typeof pipe == 'function')
-      return pipe
+      return batchize(pipe)
     if(typeof pipe == 'string')
       pipe = UV.pipetypes[pipe]
     
     if(typeof (pipe||{}).batch == 'function')
       return pipe.batch
     if(typeof (pipe||{}).single == 'function')
-      return function(pallet, s, c) {
-        return pallet.map(
-          function(item) {
-            return pipe.single(item, s, c)})}
+      return batchize(pipe.single)
     
     return UV.onError('Invalid pipe in pipeline') || UV.identity 
   })
@@ -169,7 +195,7 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
 
 UV.build_scheduler = function(renderer) {
   var going = false
-  var speed = 30
+  var delay = 30
   var stepper
   
   var step = function() {
@@ -179,14 +205,15 @@ UV.build_scheduler = function(renderer) {
     
     if(!going) return false
 
-    if(speed)
-      setTimeout(step, speed)
+    if(delay)
+      setTimeout(step, delay)
     else
       setImmediate(step)
   }
   
-  var go = function(new_stepper) {
-    stepper = new_stepper
+  var go = function(str_or_fun) {
+    var maybe_stepper = UV.steppers[str_or_fun]
+    stepper = maybe_stepper ? maybe_stepper : str_or_fun
 
     if(going) return false
     
@@ -195,7 +222,7 @@ UV.build_scheduler = function(renderer) {
   }
 
   var  stop = function( ) { going = false   }
-  var speed = function(n) { speed = +n || 0 }
+  var speed = function(n) { delay = +n || 0 }
   
   return { go: go
          , stop: stop
@@ -227,8 +254,6 @@ UV.helpers.shift = function(dx, context) {                    // effectfully aff
 }
 
 UV.helpers.draw_column = function(data, offset, context) {    // effectfully affects the canvas
-  data = data || ds
-
   var w = context.canvas.width
   var h = context.canvas.height
 
