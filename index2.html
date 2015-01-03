@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+<head>
+  <title>Underview: a data structure visualizer</title>
+  <script src="mori.js"></script>
+  <script src="Immutable.min.js"></script>
+  <script src="underview.js"></script>
+</head>
+<body>
+
+  <canvas id="canvas" width="800" height="680"></canvas>
+  
+  <div style="float:right">
+    
+    <p><button id="queue_mori">Mori Queue</button></p>
+    <p><button id="map_mori_random">Mori Map random</button></p>
+    <p><button id="map_mori_sequential">Mori Map sequential</button></p>
+
+    <p><button id="vector_fb">FB Vector queue</button></p>
+    <p><button id="map_fb_random">FB Map random</button></p>
+    <p><button id="map_fb_sequential">FB Map sequential</button></p>
+    
+    <hr />
+    
+    <p><button id="stop">Stop!</button></p>
+    <p><button id="toggle_black">Toggle black</button></p>
+
+    <p>Sat: <input type="range" id="sat_value" value="0" max="50"></p>
+    <p>Lit: <input type="range" id="lit_value" value="20" max="60"></p>
+    <p>Spd: <input type="range" id="spd_value" value="30" max="200"></p>
+    
+  </div>
+
+  <script>
+  
+    /// steppers and goers
+    
+    UV.add_stepper('queue_mori',
+      { init: function() { return mori.queue() }
+      , step: function(data) {
+                data = mori.conj(data, rand())
+                if(mori.count(data) > 200)
+                  data = mori.pop(data)
+                return data } } )
+    
+    UV.add_stepper('map_mori_random',
+      { init: function() { return mori.hash_map() }
+      , step: function(data) {
+                var n = rand(350) + 1
+                data = mori.assoc(data, 'a'+n, n)
+                return data } } )
+    
+    UV.add_stepper('map_mori_sequential',
+      { init: function() { return mori.hash_map() }
+      , step: function(data) {
+                var n = mori.count(data) + 1
+                data = mori.assoc(data, 'a'+n, n)
+                return data } } )
+    
+        
+    UV.add_stepper('vector_fb',
+      { init: function() { return Immutable.Vector() }
+      , step: function(data) {
+                data = data.push(rand())
+                if(data.length > 360)
+                  data = data.shift()
+                return data } } )
+    
+    UV.add_stepper('map_fb_random',
+      { init: function() { return Immutable.Map() }
+      , step: function(data) {
+                var n = rand(350) + 1
+                data = data.set('a'+n, n)
+                return data } } )
+
+    UV.add_stepper('map_fb_sequential',
+      { init: function() { return Immutable.Map() }
+      , step: function(data) {
+                var n = data.length + 1
+                data = data.set('a'+n, n)
+                return data } } )
+                
+    
+    // go fun and dom bindings
+
+    var el = document.getElementById.bind(document)
+    var ctx = el('canvas').getContext('2d')
+    
+    var pipeline  = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
+    var renderer  = UV.build_renderer(pipeline, ctx)
+    var scheduler = UV.build_scheduler(renderer.draw)
+
+    function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
+
+    function makego(stepper_name) {
+      var stepper = UV.steppers[stepper_name]
+      return partial(scheduler.go, stepper)
+    }
+    
+    Object.keys(UV.steppers).forEach(function(key) {
+      clickit(key, makego(key))
+    })
+    
+    // other controls
+    
+    clickit('stop', scheduler.stop)
+    clickit('toggle_black', function() { renderer.set('valuation', 'black', !renderer.get('valuation', 'black') ) })
+    
+    function changeit(elstr, fun) { el(elstr).addEventListener('change', function(x) { fun(x) }) }
+    
+    changeit('sat_value', function(elem) { renderer.set('valuation', 'sat', elem.target.value) })
+    changeit('lit_value', function(elem) { renderer.set('valuation', 'lit', elem.target.value) })
+    changeit('spd_value', function(elem) { scheduler.speed(elem.target.value) })
+
+
+
+
+
+
+
+
+
+////////////////////////
+    
+    XSIZE=3
+    YSIZE=1
+
+    function draw_tree(data, context, x, y) {
+      x = x || 0
+      y = y || 0
+  
+      var todo = [data, NaN]
+      var longest = Object.keys(data).length
+      var maxes = [longest]
+      var generation = 0
+      var min_y = y
+  
+      while(todo.length) {
+        var data = todo.shift() // opt
+    
+        if(data !== data) {
+          if(!todo.length) return true
+          maxes.push(longest)
+          x += XSIZE * maxes[generation] + XSIZE
+          longest = 0 
+          y = min_y
+          generation++
+          todo.push(NaN)
+        }
+    
+        if(!data || typeof data != 'object') continue
+
+        draw_list(data, context, x, y)
+
+        y += YSIZE * 1
+        // var count = 0
+        var keys = Object.keys(data)
+        // var len = keys.length
+
+        keys.forEach(function(key) {
+          if(data[key] && typeof data[key] == 'object') {
+            todo.push(data[key])
+            longest = Math.max(longest, Object.keys(data[key]).length)
+            // count++
+            // draw_tree(data[key], context, x + len, y + count*15)
+          }
+        })
+    
+      }
+    }
+
+
+    function draw_list(data, context, x, y) {
+      var index = 0
+      Object.keys(data).forEach(function(key) {
+        var item = data[key]
+        var hue = 0, sat = '0%', lit = '0%'
+
+        if(item && isFinite(item)) {
+          hue = item || 0
+          sat = '60%'
+          lit = '60%'
+        }
+
+        if(typeof item == 'string') {
+          lit = '80%'
+          sat = '100%'
+          hue = 100
+        }
+
+        if(item && typeof item == 'object') {
+          lit = '80%'
+          sat = '100%'
+          hue = 200
+        }
+
+        var c = 'hsl(' + hue + ', ' + sat + ', ' + lit + ')'
+
+        context.fillStyle = c
+        context.fillRect(+x+index*XSIZE, y, XSIZE, YSIZE);
+        index++
+      })
+    }
+
+    
+    
+    /*
+    
+    hot pink for pointers
+    neon blue for nulls
+    ghostly orange for strings
+    
+    
+    
+times = function(n) {if(n < 1) return false; setImmediate(function() {go(); times(n-1)})}
+
+go = function() {var n = rand(350000) + 1
+                data = data.set('a'+n, n)
+ctx.clearRect(0,0,900,900); draw_tree(data, ctx, 20, 0);}
+
+data = new Immutable.Map()
+
+///////
+    
+go = function() {var n = rand(350000) + 1
+                data = mori.assoc(data, 'a'+n, n)
+ctx.clearRect(0,0,900,900); draw_tree(data, ctx, 20, 0);}
+
+data = mori.hash_map()
+    
+///////
+    
+go = function() {var n = rand(350000) + 1
+                 data2 = data2.set('a'+n, n)
+                 data1 = mori.assoc(data1, 'a'+n, n)
+                 ctx.clearRect(0,0,900,900)
+                 draw_tree(data1, ctx, 0, 0)
+                 draw_tree(data2, ctx, 450, 0)}
+    
+    */
+    
+
+  </script>
+  
+</body>  
+</html>
