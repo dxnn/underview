@@ -22,7 +22,8 @@ Example using all the built-in goodies:
     
     scheduler.go('simple_example')
     
-DIY Example:
+    
+Example DIY explosion:
 
     var ctx = document.getElementById('canvas').getContext('2d') // get an html canvas element
     
@@ -47,11 +48,27 @@ DIY Example:
 
 /*
 
-TODOS:
-  - different flattening techniques (e.g. middle-out)
+TODOS
+
+  --- make it work ---
+    - horizontal structural view
+    - mouseover data sample view
+  --- then make it simple ---
+
+
+  - branching pipelines to account for multiple views?
+  - adjustable processing pipelines, with a live editable pipeline editor thing...
+
+  - pixel compression (4-to-1 would show the 1024 transition) (both ways -- expansion too)
+  - different flattening techniques (middle-out, BFS, etc)
   - color by value, diff, change, locality, etc
-  - pixel compression (4-to-1 would show the 1024 transition)
   - binary tree -- change saturation so you can see unbalanced tree easily
+  - better example pages with many more examples
+
+MAYBE
+  So I had a dream where instead of wrapping the data and functionality together using closures
+  there was just data, and the whole swack of it streamed through the processing pipeline.
+  Respective pros/cons? Discuss.
 
 */
 
@@ -64,14 +81,14 @@ UV.helpers   = {}                                             // mostly canvas w
 
 UV.add_pipetype = function(name, pipetype) {
   if(typeof pipetype != 'object') 
-    return UV.onError('Invalid pipetype')
+    return UV.error('Invalid pipetype')
 
   if( typeof pipetype.batch  != 'function' 
    && typeof pipetype.single != 'function'
-    ) return UV.onError('A pipetype needs a batch or single function')
+    ) return UV.error('A pipetype needs a batch or single function')
 
   if(UV.pipetypes[name]) 
-    return UV.onError('A pipetype with that name already exists')
+    return UV.error('A pipetype with that name already exists')
 
   UV.pipetypes[name] = pipetype
   return true
@@ -79,13 +96,13 @@ UV.add_pipetype = function(name, pipetype) {
 
 UV.add_stepper = function(name, stepper) {                    // a particular data structure progression
   if(typeof stepper != 'object') 
-    return UV.onError('Invalid stepper')
+    return UV.error('Invalid stepper')
 
   if(UV.steppers[name]) 
-    return UV.onError('A stepper with that name already exists')
+    return UV.error('A stepper with that name already exists')
 
   if(typeof stepper.step != 'function')                       // step: DS -> DS
-    return UV.onError('A stepper must have a step function')
+    return UV.error('A stepper must have a step function')
 
   if(typeof stepper.init != 'function')                       // generate initial DS
     stepper.init = UV.noop
@@ -93,10 +110,6 @@ UV.add_stepper = function(name, stepper) {                    // a particular da
   stepper.data = stepper.init()
   UV.steppers[name] = stepper
   return true
-}
-
-UV.get_stepper = function(name) {
-  
 }
 
 
@@ -134,7 +147,7 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
     if(typeof (pipe||{}).single == 'function')
       return batchize(pipe.single)
     
-    return UV.onError('Invalid pipe in pipeline') || UV.identity 
+    return UV.error('Invalid pipe in pipeline') || UV.identity 
   })
   
   var really_draw = function() {
@@ -163,11 +176,11 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
   var set_state = function(pipetype, key, value) {
     var index = typeof pipetype == 'string' ? state_map[pipetype] : pipetype
     if(!index && index !== 0)
-      return UV.onError('Pipetype not present')
+      return UV.error('Pipetype not present')
 
     var state = pipeline_state[index]
     if(typeof state != 'object')
-      return UV.onError('That state is invalid')
+      return UV.error('That state is invalid')
     
     state[key] = value                                        // mutation via pointer
   }
@@ -175,11 +188,11 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
   var get_state = function(pipetype, key) {
     var index = typeof pipetype == 'string' ? state_map[pipetype] : pipetype
     if(!index && index !== 0)
-      return UV.onError('Pipetype not present')
+      return UV.error('Pipetype not present')
 
     var state = pipeline_state[index]
     if(typeof state != 'object')
-      return UV.onError('That state is invalid')
+      return UV.error('That state is invalid')
     
     return state[key]
   }
@@ -199,7 +212,7 @@ UV.build_scheduler = function(renderer) {
   var stepper
   
   var step = function() {
-    var result = stepper.step(stepper.data) 
+    var result = stepper.step(stepper.data)                   // THINK: instantiate steppers? or clone?
     stepper.data = result
     renderer(result)
     
@@ -238,7 +251,7 @@ UV.noop = function() {}
 
 UV.identity = function(x) {return x}
 
-UV.onError = function(err) {                                  // replace this to suit your needs
+UV.error = function(err) {                                    // replace this to suit your needs
   console.error(err)
 }
 
@@ -276,6 +289,8 @@ UV.helpers.draw_column = function(data, offset, context) {    // effectfully aff
 /// general helpers -- these are injected into the global scope
 
 function flatten(data) {
+  // TODO: handle cyclic data structures
+  
   if(!data && data !== 0)     return NaN
   
   if(Array.isArray(data))     return flatten_array(data)
