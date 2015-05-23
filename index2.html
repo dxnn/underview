@@ -206,9 +206,16 @@
     
     /*
     
-    hot pink for pointers
-    neon blue for nulls
-    ghostly orange for strings
+    - spacing for subsections
+    - try for linked lists
+    - find a vlist implementation
+    - linked canvases: to data display, from compact timeline
+    
+    
+    sliders for colors:
+    - hot pink for pointers
+    - neon blue for nulls
+    - ghostly orange for strings
     
     
     
@@ -229,6 +236,9 @@ ctx.clearRect(0,0,900,900); draw_tree(data, ctx, 20, 0);}
 data = mori.hash_map()
     
 ///////
+    
+data1 = mori.hash_map()
+data2 = new Immutable.Map()
     
 go = function() {var n = rand(350000) + 1
                  data2 = data2.set('a'+n, n)

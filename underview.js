@@ -204,9 +204,8 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
 }
 
 
-/// a scheduler for scheduling things
 
-UV.build_scheduler = function(renderer) {
+UV.build_scheduler = function(renderer) {                     // builds a scheduler for scheduling things
   var going = false
   var delay = 30
   var stepper
@@ -245,7 +244,11 @@ UV.build_scheduler = function(renderer) {
 }
 
 
-/// UV helper functions
+/**********
+
+  UV helper functions
+
+**********/
 
 UV.noop = function() {}
 
@@ -286,7 +289,11 @@ UV.helpers.draw_column = function(data, offset, context) {    // effectfully aff
 }
 
 
-/// general helpers -- these are injected into the global scope
+/**********
+
+  These helper functions are injected into the global scope ¯\_(ツ)_/¯
+
+**********/
 
 function flatten(data) {
   // TODO: handle cyclic data structures
