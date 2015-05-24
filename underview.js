@@ -30,7 +30,7 @@ Example DIY explosion:
     var draw = function(data, offset, ctx) {
       data.forEach(function(val, index) {
         ctx.fillStyle = 'hsl(' + index*2.6 + ', 100%, 80%)'
-        ctx.fillRect(rand(ctx.canvas.width), rand(ctx.canvas.height), val, val);
+        ctx.fillRect(rand(ctx.canvas.width), rand(ctx.canvas.height), val, val)
       })
     }
 
@@ -208,7 +208,9 @@ UV.build_renderer = function(pipeline, context) {             // pipeline is a l
 UV.build_scheduler = function(renderer) {                     // builds a scheduler for scheduling things
   var going = false
   var delay = 30
+  var iters = 0
   var stepper
+  var onstep
   
   var step = function() {
     var result = stepper.step(stepper.data)                   // THINK: instantiate steppers? or clone?
@@ -216,6 +218,9 @@ UV.build_scheduler = function(renderer) {                     // builds a schedu
     renderer(result)
     
     if(!going) return false
+
+    if(onstep) onstep(stepper.data, iters)
+    iters++
 
     if(delay)
       setTimeout(step, delay)
@@ -230,16 +235,20 @@ UV.build_scheduler = function(renderer) {                     // builds a schedu
     if(going) return false
     
     going = true
-    step() 
+    step()
   }
 
-  var  stop = function( ) { going = false   }
+  var  stop = function( ) { going = false }
+  var  ters = function( ) { return iters  }
   var speed = function(n) { delay = +n || 0 }
+  var nstep = function(f) { onstep = f }
   
   return { go: go
          , stop: stop
          , step: step
+         , iters: ters
          , speed: speed 
+         , onstep: nstep
          }
 }
 
@@ -263,10 +272,10 @@ UV.helpers.shift = function(dx, context) {                    // effectfully aff
 
   var w = context.canvas.width
   var h = context.canvas.height
-  var imageData = context.getImageData(0, 0, w, h);
+  var imageData = context.getImageData(0, 0, w, h)
 
-  context.clearRect(0, 0, w, h);
-  context.putImageData(imageData, dx, 0);
+  context.clearRect(0, 0, w, h)
+  context.putImageData(imageData, dx, 0)
 }
 
 UV.helpers.draw_column = function(data, offset, context) {    // effectfully affects the canvas
@@ -284,7 +293,7 @@ UV.helpers.draw_column = function(data, offset, context) {    // effectfully aff
       c = 'hsl(0, 0%, 0%)'
 
     context.fillStyle = c
-    context.fillRect(w-1-offset, index, 1, 1);
+    context.fillRect(w-1-offset, index, 1, 1)
   })
 }
 
