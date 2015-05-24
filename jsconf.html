@@ -1,0 +1,327 @@
+<!doctype html>
+<html>
+<head>
+  <title>Underview: a data structure visualizer</title>
+  <script src="mori.js"></script>
+  <script src="Immutable.min.js"></script>
+  <script src="underview.js"></script>
+  <style type="text/css" media="screen">
+    .left {
+      background-color: #faffff;
+    }
+    .right {
+      background-color: #fffaff;
+    }
+  </style>
+</head>
+<body>
+  
+  <div>
+    <button id="enqueue">Enqueue</button>
+    <button id="dequeue">Dequeue</button>
+
+    <button id="map_random">Map random</button>
+
+    <button id="map_sequential">Map sequential</button>
+
+    <button id="stop">Stop</button>
+    <button id="clear">Clear</button>
+    <button id="toggle_tree">Trees</button>
+    <button id="toggle_black">Boundaries</button>
+  </div>
+  
+  <table border="0" cellspacing="0" cellpadding="10">
+    <tr>
+      <th class="left">Immutable.js</th>
+      <th class="right">Mori.js</th>
+    </tr>
+    <tr>
+      <td class="left"><canvas id="canvas_fb" width="600" height="480"></canvas></td>
+      <td class="right"><canvas id="canvas_mo" width="600" height="480"></canvas></td>
+    </tr>
+    <tr>
+      <td class="left"><canvas id="canvas_fb_tree" width="600" height="200"></canvas></td>
+      <td class="right"><canvas id="canvas_mo_tree" width="600" height="200"></canvas></td>
+    </tr>
+  </table>
+
+
+  <script>
+  
+    /// steppers and goers
+
+    UV.add_stepper('queue_mo',
+      { init: function() { return mori.queue() }
+      , step: function(data) {
+                data = mori.conj(data, rand())
+                // if(mori.count(data) > 250)
+                if(queue_switch)
+                  data = mori.pop(data)
+                return data } } )
+
+    UV.add_stepper('queue_fb',
+      { init: function() { return Immutable.Vector() }
+      , step: function(data) {
+                data = data.push(rand())
+                // if(data.length > 250)
+                if(queue_switch)
+                  data = data.shift()
+                return data } } )
+
+
+
+    UV.add_stepper('map_mo_random',
+      { init: function() { return mori.hash_map() }
+      , step: function(data) {
+                var n = rand(350) + 1
+                data = mori.assoc(data, 'a'+n, n)
+                return data } } )
+
+      UV.add_stepper('map_fb_random',
+        { init: function() { return Immutable.Map() }
+        , step: function(data) {
+                  var n = rand(350) + 1
+                  data = data.set('a'+n, n)
+                  return data } } )
+
+
+
+
+    UV.add_stepper('map_mo_sequential',
+      { init: function() { return mori.hash_map() }
+      , step: function(data) {
+                var n = mori.count(data) + 1
+                data = mori.assoc(data, 'a'+n, n)
+                return data } } )
+
+    
+    UV.add_stepper('map_fb_sequential',
+      { init: function() { return Immutable.Map() }
+      , step: function(data) {
+                var n = data.length + 1
+                data = data.set('a'+n, n)
+                return data } } )
+            
+  
+  
+  
+    // go fun and dom bindings
+
+    var el = document.getElementById.bind(document)
+  
+    var pipeline = ['flatten', 'valuation', 'colorize', 'shift-columns', 'draw-columns']
+    
+    var ctxs          = {}
+        ctxs.fb       = el('canvas_fb').getContext('2d')
+        ctxs.mo       = el('canvas_mo').getContext('2d')
+        ctxs.fb_tree  = el('canvas_fb_tree').getContext('2d')
+        ctxs.mo_tree  = el('canvas_mo_tree').getContext('2d')
+    
+    var renderers     = {}
+        renderers.fb  = UV.build_renderer(pipeline, ctxs.fb)
+        renderers.mo  = UV.build_renderer(pipeline, ctxs.mo)
+    
+    var schedulers    = {}
+        schedulers.fb = UV.build_scheduler(renderers.fb.draw)
+        schedulers.mo = UV.build_scheduler(renderers.mo.draw)
+  
+  
+    function clickit(elstr, fun) { el(elstr).addEventListener('click', function() { fun() }) }
+    function clearit(ctx)        { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height)  }
+    
+    clickit('enqueue', function() {
+      // schedulers.fb.onstep(function(_, n) {if(n > 245) schedulers.fb.stop()})
+      // schedulers.mo.onstep(function(_, n) {if(n > 245) schedulers.mo.stop()})
+      queue_switch = false
+      schedulers.fb.go('queue_fb')
+      schedulers.mo.go('queue_mo')
+    })
+    
+    clickit('dequeue', function() {
+      // schedulers.fb.onstep(function(_, n) {if(n > 700) schedulers.fb.stop()})
+      // schedulers.mo.onstep(function(_, n) {if(n > 700) schedulers.mo.stop()})
+      queue_switch = true
+      schedulers.fb.go('queue_fb')
+      schedulers.mo.go('queue_mo')
+    })
+    
+
+    clickit('map_random', function() {
+      schedulers.fb.go('map_fb_random')
+      schedulers.mo.go('map_mo_random')
+    })
+    
+    
+    clickit('map_sequential', function() {
+      schedulers.fb.go('map_fb_sequential')
+      schedulers.mo.go('map_mo_sequential')
+    })
+
+
+    clickit('clear', function() { clearit(ctxs.fb); clearit(ctxs.mo) })
+    clickit('stop',  function() { schedulers.fb.stop(); schedulers.mo.stop() })
+    clickit('toggle_black', function() { 
+      renderers.fb.set('valuation', 'black', !renderers.fb.get('valuation', 'black') ) 
+      // renderers.mo.set('valuation', 'black', !renderers.mo.get('valuation', 'black') )
+    })
+    
+    // globals sorry ¯\_(ツ)_/¯
+    var queue_switch = false
+    var show_tree = false
+    clickit('toggle_tree', function() {show_tree = !show_tree})
+    
+    schedulers.fb.onstep(function(data, n) {
+      if(!show_tree) return false
+      ctxs.fb_tree.clearRect(0,0,600,200)
+      draw_tree(data, ctxs.fb_tree, 0, 0)
+    })
+    schedulers.mo.onstep(function(data, n) {
+      if(!show_tree) return false
+      ctxs.mo_tree.clearRect(0,0,600,200)
+      draw_tree(data, ctxs.mo_tree, 0, 0)
+    })
+    
+    
+    
+    
+
+
+
+
+
+
+
+////////////////////////
+    
+    XSIZE=3
+    YSIZE=1
+
+    function draw_tree(data, context, x, y) {
+      x = x || 0
+      y = y || 0
+  
+      var todo = [data, NaN]
+      var longest = Object.keys(data).length
+      var maxes = [longest]
+      var generation = 0
+      var min_y = y
+  
+      while(todo.length) {
+        var data = todo.shift() // opt
+    
+        if(data !== data) {
+          if(!todo.length) return true
+          maxes.push(longest)
+          x += XSIZE * maxes[generation] + XSIZE
+          longest = 0 
+          y = min_y
+          generation++
+          todo.push(NaN)
+        }
+    
+        if(!data || typeof data != 'object') continue
+
+        draw_list(data, context, x, y)
+
+        y += YSIZE * 1
+        // var count = 0
+        var keys = Object.keys(data)
+        // var len = keys.length
+
+        keys.forEach(function(key) {
+          if(data[key] && typeof data[key] == 'object') {
+            todo.push(data[key])
+            longest = Math.max(longest, Object.keys(data[key]).length)
+            // count++
+            // draw_tree(data[key], context, x + len, y + count*15)
+          }
+        })
+    
+      }
+    }
+
+
+    function draw_list(data, context, x, y) {
+      var index = 0
+      Object.keys(data).forEach(function(key) {
+        var item = data[key]
+        var hue = 0, sat = '0%', lit = '0%'
+
+        if(item && isFinite(item)) {
+          hue = item || 0
+          sat = '60%'
+          lit = '60%'
+        }
+
+        if(typeof item == 'string') {
+          lit = '80%'
+          sat = '100%'
+          hue = 100
+        }
+
+        if(item && typeof item == 'object') {
+          lit = '80%'
+          sat = '100%'
+          hue = 200
+        }
+
+        var c = 'hsl(' + hue + ', ' + sat + ', ' + lit + ')'
+
+        context.fillStyle = c
+        context.fillRect(+x+index*XSIZE, y, XSIZE, YSIZE);
+        index++
+      })
+    }
+
+    
+    
+    /*
+    
+    - spacing for subsections
+    - try for linked lists
+    - find a vlist implementation
+    - linked canvases: to data display, from compact timeline
+    
+    
+    sliders for colors:
+    - hot pink for pointers
+    - neon blue for nulls
+    - ghostly orange for strings
+    
+    
+    
+times = function(n) {if(n < 1) return false; setImmediate(function() {go(); times(n-1)})}
+
+go = function() {var n = rand(350000) + 1
+                data = data.set('a'+n, n)
+ctx.clearRect(0,0,900,900); draw_tree(data, ctx, 20, 0);}
+
+data = new Immutable.Map()
+
+///////
+    
+go = function() {var n = rand(350000) + 1
+                data = mori.assoc(data, 'a'+n, n)
+ctx.clearRect(0,0,900,900); draw_tree(data, ctx, 20, 0);}
+
+data = mori.hash_map()
+    
+///////
+    
+data1 = mori.hash_map()
+data2 = new Immutable.Map()
+    
+go = function() {var n = rand(350000) + 1
+                 data2 = data2.set('a'+n, n)
+                 data1 = mori.assoc(data1, 'a'+n, n)
+                 ctx.clearRect(0,0,900,900)
+                 draw_tree(data1, ctx, 0, 0)
+                 draw_tree(data2, ctx, 450, 0)}
+    
+    */
+    
+
+  </script>
+  
+</body>  
+</html>
