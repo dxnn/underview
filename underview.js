@@ -439,3 +439,98 @@ UV.add_pipetype('valuation', {
         if(state.black)
           acc.push([1, 1, 1])
         return acc }, [] ) }})
+
+
+
+
+
+
+
+
+
+/**********
+
+  Experimental additions for half-baked tree view
+
+**********/
+
+
+XSIZE=3
+YSIZE=1
+
+function draw_tree(data, context, x, y) {
+  x = x || 0
+  y = y || 0
+
+  var todo = [data, NaN]
+  var longest = Object.keys(data).length
+  var maxes = [longest]
+  var generation = 0
+  var min_y = y
+
+  while(todo.length) {
+    var data = todo.shift() // opt
+
+    if(data !== data) {
+      if(!todo.length) return true
+      maxes.push(longest)
+      x += XSIZE * maxes[generation] + XSIZE
+      longest = 0 
+      y = min_y
+      generation++
+      todo.push(NaN)
+    }
+
+    if(!data || typeof data != 'object') continue
+
+    draw_list(data, context, x, y)
+
+    y += YSIZE * 1
+    // var count = 0
+    var keys = Object.keys(data)
+    // var len = keys.length
+
+    keys.forEach(function(key) {
+      if(data[key] && typeof data[key] == 'object') {
+        todo.push(data[key])
+        longest = Math.max(longest, Object.keys(data[key]).length)
+        // count++
+        // draw_tree(data[key], context, x + len, y + count*15)
+      }
+    })
+
+  }
+}
+
+
+function draw_list(data, context, x, y) {
+  var index = 0
+  Object.keys(data).forEach(function(key) {
+    var item = data[key]
+    var hue = 0, sat = '0%', lit = '0%'
+
+    if(item && isFinite(item)) {
+      hue = item || 0
+      sat = '60%'
+      lit = '60%'
+    }
+
+    if(typeof item == 'string') {
+      lit = '80%'
+      sat = '100%'
+      hue = 100
+    }
+
+    if(item && typeof item == 'object') {
+      lit = '80%'
+      sat = '100%'
+      hue = 200
+    }
+
+    var c = 'hsl(' + hue + ', ' + sat + ', ' + lit + ')'
+
+    context.fillStyle = c
+    context.fillRect(+x+index*XSIZE, y, XSIZE, YSIZE);
+    index++
+  })
+}
